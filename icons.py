@@ -4,8 +4,10 @@ icons = {
     "folder": {
         "default": " ",
         "parent": "󱧰 ",
-        "hidden": "󱞞 ",
+        "hidden": "󰉖 ",
         "locked": "󰉐 ",
+        "link": "󱧮 ",
+        "hidden_link": "󱧯 "
     },
     "file": {
         "default": " ",
@@ -28,7 +30,14 @@ icons = {
         "db": " ",
         "font": " ",
         "code": " ",
-        "license": "󰿃 "
+        "license": "󰿃 ",
+        "broken_link": "󰌸 ",
+    },
+    "scrollbar": {
+        "top": "",
+        "bottom": "",
+        "unfilled": " ",
+        "filled": "┃"
     },
     "generic": {
         "chevron": { "right": " ", "down": " ", "up": " ", "left": " "},
@@ -66,6 +75,10 @@ def identify_folder_icon(folder) -> str:
         return Icons.generic.git
     if folder.is_parent:
         return Icons.folder.parent
+    if folder.is_link:
+        if folder.name.startswith("."):
+            return Icons.folder.hidden_link
+        return Icons.folder.link
     return Icons.folder.hidden if folder.name.startswith(".") else Icons.folder.default
 
 def identify_file_icon(file) -> str:

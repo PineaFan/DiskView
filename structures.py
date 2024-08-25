@@ -19,17 +19,32 @@ class Item:
             self.is_parent = True
         self.is_dir = os.path.isdir(self.location)
         self.is_link = os.path.islink(self.location)
+        self.link_from = None
+        if self.is_link:
+            try:
+                self.link_from = os.path.realpath(self.location)
+                os.stat(self.link_from)  # Test if the link is broken
+            except FileNotFoundError:
+                self.icon = Icons.file.broken_link
+                self.is_dir = False
+                self.size = 0
+                self.permissions = [0, 0, 0]
+                self.modified = 0
+                self.created = 0
+                self.owner = "Unknown"
+                self.group = "Unknown"
+                return
+            self.is_dir = os.path.isdir(self.link_from or self.location)
         self.size = 0
-        if not self.is_dir:
-            self.size = os.path.getsize(path)
-        raw_permissions = os.stat(path).st_mode
+        stat = os.stat(self.link_from or self.location)
+        raw_permissions = stat.st_mode
         octal_permissions = oct(raw_permissions)[-3:]
         self.permissions = [int(octal_permissions[0]), int(octal_permissions[1]), int(octal_permissions[2])]
-        self.modified = os.path.getmtime(path)
-        self.created = os.path.getctime(path)
-        owner_id = os.stat(path).st_uid
+        self.modified = os.path.getmtime(self.link_from or self.location)
+        self.created = os.path.getctime(self.link_from or self.location)
+        owner_id = stat.st_uid
         self.owner = getpwuid(owner_id).pw_name
-        group_id = os.stat(path).st_gid
+        group_id = stat.st_gid
         self.group = getgrgid(group_id).gr_name
 
         self.icon = identify_icon(self)
@@ -47,7 +62,7 @@ class Item:
 
     @property
     def display(self):
-        return f"  {self.icon} {self.name}" + f" {self.permissions} {self.owner} {self.group}"
+        return f"  {self.icon} {self.name}"
 
     def row_colour(self, selected_name: str):
         return row_highlight_colour(self, self.location == selected_name)

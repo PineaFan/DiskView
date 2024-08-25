@@ -4,9 +4,9 @@ import sys
 import curses
 import time
 
-# from pages import sidebar
+from pages import sidebar
 from pages import files
-# from pages import header
+from pages import header
 from enums import Modes
 from colours import Colours
 from structures import Item
@@ -101,8 +101,8 @@ class Explorer:
         self.mode = Modes.default
 
         self.settings = {
-            "show_hidden_files": True,
-            "show_permission_denied": True
+            "show_hidden_files": False,
+            "show_permission_denied": False
         }
 
         self.screen = screen
@@ -114,10 +114,8 @@ class Explorer:
 
         # Define the colours
         self.colours = Colours()
-        # 0: Default, 1: Accent, 2: Success, 3: Warning, 4: Error
-        # For bold red text, use self.colours.error | self.colours.bold
 
-        self.key_hooks = [files.key_hook, self.key_hook]
+        self.key_hooks = [files.key_hook, self.key_hook, header.key_hook]
 
     @property
     def items(self):
@@ -129,11 +127,22 @@ class Explorer:
         for item in self.current_path.iterdir():
             items.append(Item(self.current_path, item.name))
         folders, files = [x for x in items if x.is_dir], [x for x in items if not x.is_dir]
+
+        # Filter out hidden files if the setting is not enabled
+        if not self.settings.get("show_hidden_files", False):
+            folders = [x for x in folders if not x.name.startswith(".")]
+            files = [x for x in files if not x.name.startswith(".")]
+        # Filter out files the user does not have read access to
+        if not self.settings.get("show_permission_denied", False):
+            folders = [x for x in folders if x.can_read]
+            files = [x for x in files if x.can_read]
+
         folders.sort(key=lambda x: x.name.lower())
         files.sort(key=lambda x: x.name.lower())
         self.known_files[self.current_path] = {
             "folders": folders,
-            "files": files
+            "files": files,
+            "total": len(folders) + len(files)
         }
         return folders + files
 
@@ -162,8 +171,8 @@ class Explorer:
         self.render_borders()
 
         files.callback(**self.get_externals(self.sections.main))
-        # sidebar.callback(**self.get_externals(self.sections.secondary_sidebar))
-        # header.callback(**self.get_externals(self.sections.header))
+        sidebar.callback(**self.get_externals(self.sections.sidebar))
+        header.callback(**self.get_externals(self.sections.header))
 
     def key_hook(self, _, key):  # _ is self, but it's passed in for consistency
         if key == "q":
@@ -189,7 +198,7 @@ class Explorer:
             self.sections = GridHelper(*self.dimensions, padding=True)
             self.sections.add_section("header", height=2)
             self.sections.add_section("footer", height=1, flip_align=True)
-            self.sections.add_section("secondary_sidebar", width=2/5, flip_align=True)
+            self.sections.add_section("sidebar", width=2/5, flip_align=True)
             self.sections.add_remaining("main")
 
     def set_char(self, y, x, char, colour=0):
@@ -291,7 +300,7 @@ def main(screen, start_path=None):
     try:
         renders_since_keypress = 0
         while True:
-            # explorer.resize_hook()
+            explorer.resize_hook()
 
             explorer.render()
             renders_since_keypress += 1
