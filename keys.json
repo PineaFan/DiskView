@@ -24,18 +24,5 @@
         "scroll_top": "KEY_HOME",
         "scroll_bottom": "KEY_END",
         "escape": "^["
-    },
-    "windows": {
-        "navigate_parent": "KEY_BACKSPACE",
-        "navigate_into": "^J",
-        "arrow_up": "KEY_UP",
-        "arrow_down": "KEY_DOWN",
-        "arrow_left": "KEY_LEFT",
-        "arrow_right": "KEY_RIGHT",
-        "scroll_up_page": "KEY_PPAGE",
-        "scroll_down_page": "KEY_NPAGE",
-        "scroll_top": "KEY_HOME",
-        "scroll_bottom": "KEY_END",
-        "escape": "^["
     }
 }
