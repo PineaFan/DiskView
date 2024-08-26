@@ -116,10 +116,7 @@ class Explorer:
         self.scroll_direction_down = True
 
         self.username = os.getlogin()
-        try:
-            self.groups = os.getgroups()
-        except AttributeError:
-            self.groups = []
+        self.groups = os.getgroups()
         self.memo = {
             "can_read": {}
         }
