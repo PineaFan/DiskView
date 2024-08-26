@@ -155,15 +155,15 @@ class Explorer:
 
     @property
     def modules(self):
-        modules = {
+        all_modules = {
             "main": files,
             "header": header,
             "sidebar": sidebar,
-            "footer": footer
+            "footer": footer,
+            "preview": preview
         }
-        if self.settings.get("show_preview", True):
-            modules["preview"] = preview
-        return modules
+        rendered_modules = {k: v for k, v in all_modules.items() if k in self.sections.json}
+        return all_modules, rendered_modules
 
     @property
     def items(self):
@@ -228,7 +228,7 @@ class Explorer:
     def render(self):
         self.render_borders()
 
-        for name, imported in self.modules.items():
+        for name, imported in self.modules[1].items():
             imported.callback(**self.get_externals(getattr(self.sections, name)))
 
     def key_hook(self, _, key, mode):  # _ is self, but it's passed in for consistency
@@ -239,7 +239,7 @@ class Explorer:
     def handle_key(self, key):
         self.memo["error"] = None
         key = curses.keyname(key).decode("utf-8")
-        for hook in self.modules.values():
+        for hook in self.modules[0].values():
             hook.key_hook(self, key, self.mode)
 
     def teardown(self):
@@ -247,22 +247,36 @@ class Explorer:
         self.screen.refresh()
         curses.endwin()
 
+    def generate_sections(self):
+        if self.mode == Modes.default:
+            self.sections = GridHelper(*self.dimensions, padding=True)
+            self.sections.add_section("header", height=2)
+            # self.sections.add_section("footer", height=1, flip_align=True)
+            self.sections.add_section("sidebar", width=2/5, flip_align=True)
+            if self.settings.get("show_preview", True):
+                self.sections.add_section("preview", within="sidebar", height=-6, flip_align=True)
+            self.sections.add_remaining("main")
+        elif self.mode == Modes.search:
+            self.sections = GridHelper(*self.dimensions, padding=True)
+            self.sections.add_section("header", height=2)
+            self.sections.add_section("footer", height=1, flip_align=True)
+            self.sections.add_section("sidebar", width=2/5, flip_align=True)
+            if self.settings.get("show_preview", True):
+                self.sections.add_section("preview", within="sidebar", height=-6, flip_align=True)
+            self.sections.add_remaining("main")
+
     def resize_hook(self, force=False):
         new_dimensions = self.dimensions
         if new_dimensions != self.size_last_frame or force:
             self.memo["preview"] = None
             self.screen.clear()
             self.size_last_frame = new_dimensions
+            self.generate_sections()
 
-            self.sections = GridHelper(*self.dimensions, padding=True)
-            self.sections.add_section("header", height=2)
-            self.sections.add_section("footer", height=1, flip_align=True)
-            self.sections.add_section("sidebar", width=2/5, flip_align=True)
-
-            if self.settings.get("show_preview", True):
-                self.sections.add_section("preview", within="sidebar", height=-6, flip_align=True)
-
-            self.sections.add_remaining("main")
+    def regenerate_sections(self):
+        self.clear()
+        self.generate_sections()
+        self.render()
 
     def set_char(self, y, x, char, colour=0):
         try:

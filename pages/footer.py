@@ -43,8 +43,10 @@ def callback(explorer, **kwargs):
 def key_hook(explorer, key, mode):
     if key == Keys["/"] and mode == Modes.default:
         explorer.mode = Modes.search
+        explorer.regenerate_sections()
     if key == Keys.escape and mode == Modes.search:
         explorer.mode = Modes.default
+        explorer.regenerate_sections()
     elif mode == Modes.search and len(key) == 1:
         explorer.search = explorer.search[:explorer.search_index] + key + explorer.search[explorer.search_index:]
         explorer.search_index += 1
