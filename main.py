@@ -339,6 +339,25 @@ class Explorer:
             "add_line": self.external_add_line(section[2], section[3], section[1])
         }
 
+    def render_parts(self, lines, height, width, add_line, add_text):
+        for i, item in enumerate(lines[:height]):
+            if isinstance(item, tuple):
+                add_line(i, item[0][:width], item[1])
+            elif isinstance(item, str):
+                add_line(i, item[:width], Colours.default)
+            else:
+                # Clear the line
+                add_line(i, "", Colours.default)
+                # For each part of text, render it
+                x = 0
+                for part in item:
+                    if isinstance(part, str):
+                        add_text(i, x, part)
+                        x += len(part)
+                    else:
+                        add_text(i, x, part[0][:(width - x)], part[1])
+                        x += len(part[0])
+
     def clear(self):
         self.screen.clear()
 

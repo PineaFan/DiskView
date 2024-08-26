@@ -90,23 +90,7 @@ def callback(explorer, height, width, add_line, add_text, **kwargs):
     # Shortest duration will be modified.
     explorer.memo["refresh_interval"] = screen_refresh_interval(current.modified)
 
-    for i, item in enumerate(lines[:height]):
-        if isinstance(item, tuple):
-            add_line(i, item[0][:width], item[1])
-        elif isinstance(item, str):
-            add_line(i, item[:width], Colours.default)
-        else:
-            # Clear the line
-            add_line(i, "", Colours.default)
-            # For each part of text, render it
-            x = 0
-            for part in item:
-                if isinstance(part, str):
-                    add_text(i, x, part)
-                    x += len(part)
-                else:
-                    add_text(i, x, part[0][:(width - x)], part[1])
-                    x += len(part[0])
+    explorer.render_parts(lines, height, width, add_line, add_text)
 
 
 def key_hook(explorer, key, mode):

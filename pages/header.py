@@ -46,7 +46,7 @@ def callback(explorer, width, add_text, add_line, **kwargs):
     # If all items are on screen
     current = explorer.known_files[explorer.current_path]
     if explorer.memo.get("all_on_screen", False):
-        add_text(1, 0, f"Showing all {current.get("total")} items", Colours.default)
+        add_text(1, 0, f"Showing all {current.get('total')} items", Colours.default)
     elif current.get("total", 0) > 0:
         files_from, files_to = explorer.memo["visible"]
         add_text(1, 0, f"Showing {max(files_from, 1)} to {files_to} of {current.get('total')} items", Colours.default)
