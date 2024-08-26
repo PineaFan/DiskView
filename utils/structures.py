@@ -49,12 +49,13 @@ class Item:
         octal_permissions = oct(raw_permissions)[-3:]
         self.permissions = [int(octal_permissions[0]), int(octal_permissions[1]), int(octal_permissions[2])]
         self.modified = os.path.getmtime(self.link_from or self.location)
-        self.icon = identify_icon(self)
 
         owner_id = stat.st_uid
         self.owner = getpwuid(owner_id).pw_name
         group_id = stat.st_gid
         self.group = getgrgid(group_id).gr_name
+
+        self.icon = identify_icon(self)
 
 
     @property
