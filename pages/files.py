@@ -64,6 +64,9 @@ def callback(explorer, height, width, add_line, add_text, **kwargs):
                 line_text = f"{explorer.selection - i - visible[0]} {line_text[2:]}"
 
         add_line(i, restrict(line_text), item.row_colour(selected_item.location))
+    # Add blank lines if needed
+    for i in range(len(to_render), height):
+        add_line(i, "", Colours.default)
 
     is_scrollbar_needed = len(items) > height
     explorer.memo["all_on_screen"] = not is_scrollbar_needed
@@ -91,13 +94,22 @@ def callback(explorer, height, width, add_line, add_text, **kwargs):
 
 
 def key_hook(explorer, key, mode):
+    selection_before = explorer.selection
+    if key == Keys.arrow_up:
+        explorer.selection -= 1
+    elif key == Keys.arrow_down:
+        explorer.selection += 1
+    elif key == Keys.navigate_into:
+        selected = explorer.current_item.location
+        if selected == "..":
+            explorer.navigate(explorer.current_path.parent)
+        else:
+            explorer.navigate(explorer.current_path / selected)
+    elif key == Keys.navigate_parent:
+        if explorer.current_path != pathlib.Path("/"):
+            explorer.navigate(explorer.current_path.parent)
     if mode == Modes.default:
-        selection_before = explorer.selection
-        if key == Keys.arrow_up:
-            explorer.selection -= 1
-        elif key == Keys.arrow_down:
-            explorer.selection += 1
-        elif key == Keys.scroll_up_page:
+        if key == Keys.scroll_up_page:
             # Change selection by the height of the "main" panel
             explorer.selection -= explorer.sections.main[0]
         elif key == Keys.scroll_down_page:
@@ -108,15 +120,6 @@ def key_hook(explorer, key, mode):
             total = explorer.known_items
             total = len(total["files"]) + len(total["folders"]) + (1 if explorer.current_path != pathlib.Path("/") else 0)
             explorer.selection = total - 1
-        elif key == Keys.navigate_into:
-            selected = explorer.current_item.location
-            if selected == "..":
-                explorer.navigate(explorer.current_path.parent)
-            else:
-                explorer.navigate(explorer.current_path / selected)
-        elif key == Keys.navigate_parent:
-            if explorer.current_path != pathlib.Path("/"):
-                explorer.navigate(explorer.current_path.parent)
         elif key == "-":
             explorer.scroll_direction_down = not explorer.scroll_direction_down
         elif key.isnumeric() and explorer.settings.get("use_numeric_jump", False):

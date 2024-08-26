@@ -150,6 +150,9 @@ class Explorer:
             Modes.search: "footer"
         }
 
+        self.search = ""
+        self.search_index = 0
+
     @property
     def modules(self):
         modules = {
@@ -167,7 +170,11 @@ class Explorer:
         # Returns a list of items in the current directory
         if self.current_path in self.known_files:
             path = self.known_files[self.current_path]
-            return path["folders"] + path["files"]
+            folders, files = path["folders"], path["files"]
+            if self.search:
+                folders = [x for x in folders if self.search.lower() in x.name.lower()]
+                files = [x for x in files if self.search.lower() in x.name.lower()]
+            return folders + files
         items = []
         for item in self.current_path.iterdir():
             items.append(Item(self.current_path, item.name))
@@ -211,6 +218,9 @@ class Explorer:
         if os.path.isdir(navigate_to):
             self.current_path = navigate_to.resolve()
             self.selection = None
+            self.search = ""
+            self.search_index = 0
+            self.mode = Modes.default
             self.clear()
         elif os.path.isfile(navigate_to):
             ...  # TODO

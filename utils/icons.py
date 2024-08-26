@@ -40,7 +40,8 @@ icons = {
     "generic": {
         "chevron": { "right": " ", "down": " ", "up": " ", "left": " "},
         "git": "󰊢 ",
-        "total": "󰒠 "
+        "total": "󰒠 ",
+        "text_cursor": "󰗧 "
     }
 }
 

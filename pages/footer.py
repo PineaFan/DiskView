@@ -1,9 +1,11 @@
 from utils.colours import Colours
 from utils.icons import Icons
-from utils.keymap import key_name
+from utils.keymap import Keys, key_name
 from utils.enums import Modes
+import datetime
 
-def callback(explorer, height, width, add_line, add_text, **kwargs):
+
+def normal_callback(explorer, height, width, add_line, add_text, **kwargs):
     lines = []
 
     lines.append([
@@ -15,9 +17,43 @@ def callback(explorer, height, width, add_line, add_text, **kwargs):
     explorer.render_parts(lines, height, width, add_line, add_text)
 
 
+def search_callback(explorer, height, width, add_line, add_text, **kwargs):
+    lines = []
+
+    actual_search = explorer.search + " "
+    search_characters = [c for c in actual_search]
+    search_characters[explorer.search_index] = (search_characters[explorer.search_index], Colours.highlight)
+
+    lines.append([
+        (f"Search: ", Colours.accent),
+        *search_characters,
+        (f"[Press {key_name('esc')} to cancel]", Colours.default)
+    ])
+
+    explorer.render_parts(lines, height, width, add_line, add_text)
+    explorer.memo["refresh_interval"] = 500
+
+
+def callback(explorer, **kwargs):
+    if explorer.mode == Modes.default:
+        normal_callback(explorer, **kwargs)
+    elif explorer.mode == Modes.search:
+        search_callback(explorer, **kwargs)
+
 def key_hook(explorer, key, mode):
-    ...
-    # if key == key_name("/") and mode == Modes.default:
-    #     explorer.mode = Modes.search
-    # if key == key_name("esc") and mode == Modes.search:
-    #     explorer.mode = Modes.default
+    if key == Keys["/"] and mode == Modes.default:
+        explorer.mode = Modes.search
+    if key == Keys.escape and mode == Modes.search:
+        explorer.mode = Modes.default
+    elif mode == Modes.search and len(key) == 1:
+        explorer.search = explorer.search[:explorer.search_index] + key + explorer.search[explorer.search_index:]
+        explorer.search_index += 1
+    elif mode == Modes.search and key == Keys.backspace:
+        explorer.search = explorer.search[:explorer.search_index - 1] + explorer.search[explorer.search_index:]
+        explorer.search_index -= 1
+    elif mode == Modes.search and key == Keys.arrow_right:
+        explorer.search_index = min(explorer.search_index + 1, len(explorer.search))
+    elif mode == Modes.search and key == Keys.arrow_left:
+        explorer.search_index = max(explorer.search_index - 1, 0)
+    elif mode == Modes.search and key == Keys.delete:
+        explorer.search = explorer.search[:explorer.search_index] + explorer.search[explorer.search_index + 1:]

@@ -16,6 +16,8 @@ class Colours:
     yellow = 15
     white = 16
 
+    highlight = 20
+
     def __init__(self):
         curses.start_color()
         curses.init_pair(self.default, curses.COLOR_WHITE, curses.COLOR_BLACK)
@@ -32,6 +34,8 @@ class Colours:
         curses.init_pair(self.magenta, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
         curses.init_pair(self.yellow, curses.COLOR_YELLOW, curses.COLOR_BLACK)
         curses.init_pair(self.white, curses.COLOR_WHITE, curses.COLOR_BLACK)
+
+        curses.init_pair(self.highlight, curses.COLOR_BLACK, curses.COLOR_WHITE)
 
 
 def row_highlight_colour(file, is_selected):

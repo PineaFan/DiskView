@@ -1,6 +1,7 @@
 {
     "linux": {
         "navigate_parent": "KEY_BACKSPACE",
+        "backspace": "KEY_BACKSPACE",
         "navigate_into": "^J",
         "arrow_up": "KEY_UP",
         "arrow_down": "KEY_DOWN",
@@ -10,10 +11,13 @@
         "scroll_down_page": "KEY_NPAGE",
         "scroll_top": "KEY_HOME",
         "scroll_bottom": "KEY_END",
-        "escape": "^["
+        "escape": "^[",
+        "delete": "KEY_DC",
+        "insert": "KEY_IC"
     },
     "mac": {
         "navigate_parent": "^?",
+        "backspace": "^?",
         "navigate_into": "^J",
         "arrow_up": "KEY_UP",
         "arrow_down": "KEY_DOWN",
@@ -23,6 +27,7 @@
         "scroll_down_page": "KEY_NPAGE",
         "scroll_top": "KEY_HOME",
         "scroll_bottom": "KEY_END",
-        "escape": "^["
+        "escape": "^[",
+        "delete": ""
     }
 }

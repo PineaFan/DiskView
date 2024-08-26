@@ -7,6 +7,8 @@ class Keys:
         return self.__getitem__(item)
 
     def __getitem__(self, item: str) -> any:
+        if item not in self.__dict__:
+            return item
         return self.__dict__[item]
 
     def __repr__(self) -> str:
