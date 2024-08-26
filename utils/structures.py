@@ -4,8 +4,11 @@ try:
     from pwd import getpwuid
     from grp import getgrgid
 except ImportError:
-    getpwuid = lambda x: "Unknown"
-    getgrgid = lambda x: "Unknown"
+    class Unknown:
+        pw_name = "Unknown"
+        gr_name = "Unknown"
+    getpwuid = lambda _: Unknown
+    getgrgid = lambda _: Unknown
 
 
 from utils.icons import identify_icon, Icons
