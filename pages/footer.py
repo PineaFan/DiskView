@@ -20,9 +20,9 @@ def normal_callback(explorer, height, width, add_line, add_text, **kwargs):
 def search_callback(explorer, height, width, add_line, add_text, **kwargs):
     lines = []
 
-    actual_search = explorer.search + " "
+    actual_search = explorer.entry + " "
     search_characters = [c for c in actual_search]
-    search_characters[explorer.search_index] = (search_characters[explorer.search_index], Colours.highlight)
+    search_characters[explorer.entry_index] = (search_characters[explorer.entry_index], Colours.highlight)
 
     lines.append([
         (f"Search: ", Colours.accent),
@@ -48,14 +48,14 @@ def key_hook(explorer, key, mode):
         explorer.mode = Modes.default
         explorer.regenerate_sections()
     elif mode == Modes.search and len(key) == 1:
-        explorer.search = explorer.search[:explorer.search_index] + key + explorer.search[explorer.search_index:]
-        explorer.search_index += 1
-    elif mode == Modes.search and key == Keys.backspace:
-        explorer.search = explorer.search[:explorer.search_index - 1] + explorer.search[explorer.search_index:]
-        explorer.search_index -= 1
+        explorer.entry = explorer.entry[:explorer.entry_index] + key + explorer.entry[explorer.entry_index:]
+        explorer.entry_index += 1
+    elif mode == Modes.search and key == Keys.backspace and explorer.entry_index > 0:
+        explorer.entry = explorer.entry[:explorer.entry_index - 1] + explorer.entry[explorer.entry_index:]
+        explorer.entry_index -= 1
     elif mode == Modes.search and key == Keys.arrow_right:
-        explorer.search_index = min(explorer.search_index + 1, len(explorer.search))
+        explorer.entry_index = min(explorer.entry_index + 1, len(explorer.entry))
     elif mode == Modes.search and key == Keys.arrow_left:
-        explorer.search_index = max(explorer.search_index - 1, 0)
-    elif mode == Modes.search and key == Keys.delete:
-        explorer.search = explorer.search[:explorer.search_index] + explorer.search[explorer.search_index + 1:]
+        explorer.entry_index = max(explorer.entry_index - 1, 0)
+    elif mode == Modes.search and key == Keys.delete and explorer.entry_index < len(explorer.entry):
+        explorer.entry = explorer.entry[:explorer.entry_index] + explorer.entry[explorer.entry_index + 1:]

@@ -38,7 +38,7 @@ class GridHelper:
 
     def add_section(self, name, height=None, width=None, flip_align=False, maximum=None, minimum=None, within=None):
         """
-        Either width or height must be provided. If both are provided, width will be used.
+        Either width or height must be provided.
         If an integer is provided, it will be used as the width or height.
         If a float is provided, it will be used as a fraction of the total screen, rounded down.
         flip_align will align the section to the bottom or right, rather than the top or left.
@@ -129,10 +129,12 @@ class Explorer:
         self.mode = Modes.default
 
         self.settings = {
-            "show_hidden_files": False,
+            "show_hidden_files": True,
             "show_permission_denied": True,
             "show_preview": True,
-            "use_numeric_jump": False
+            "use_numeric_jump": False,
+            "cache_visited": False,
+            "only_active_borders": False
         }
 
         self.screen = screen
@@ -150,8 +152,8 @@ class Explorer:
             Modes.search: "footer"
         }
 
-        self.search = ""
-        self.search_index = 0
+        self.entry = ""
+        self.entry_index = 0
 
     @property
     def modules(self):
@@ -165,15 +167,45 @@ class Explorer:
         rendered_modules = {k: v for k, v in all_modules.items() if k in self.sections.json}
         return all_modules, rendered_modules
 
+    def searcher(self, items, type):
+        if self.memo.get("searches") is None:
+            self.memo["searches"] = {}
+        if self.memo["searches"].get(self.current_path) is None:
+            self.memo["searches"][self.current_path] = {}
+        if self.memo["searches"][self.current_path].get(self.entry.lower()) is None:
+            self.memo["searches"][self.current_path][self.entry.lower()] = {}
+        search = self.entry.lower()
+        if self.memo["searches"][self.current_path][search].get(type) is not None:
+            return self.memo["searches"][self.current_path][search][type]
+        matches = []
+        to_check = [x for x in items]  # Copy the list
+        # Check for exact matches at the start
+        for item in to_check:
+            if item.name.lower().startswith(search):
+                matches.append(item)
+                to_check.remove(item)
+        # Check for exact matches elsewhere
+        for item in to_check:
+            if search in item.name.lower():
+                matches.append(item)
+                to_check.remove(item)
+        # Check for partial matches
+        for item in to_check:
+            if set(search).issubset(set(item.name.lower())):
+                matches.append(item)
+                to_check.remove(item)
+        self.memo["searches"][self.current_path][search][type] = matches
+        return matches
+
     @property
     def items(self):
         # Returns a list of items in the current directory
         if self.current_path in self.known_files:
             path = self.known_files[self.current_path]
             folders, files = path["folders"], path["files"]
-            if self.search:
-                folders = [x for x in folders if self.search.lower() in x.name.lower()]
-                files = [x for x in files if self.search.lower() in x.name.lower()]
+            if self.entry:
+                folders = self.searcher(folders, "folders")
+                files = self.searcher(files, "files")
             return folders + files
         items = []
         for item in self.current_path.iterdir():
@@ -191,11 +223,18 @@ class Explorer:
 
         folders.sort(key=lambda x: x.name.lower())
         files.sort(key=lambda x: x.name.lower())
-        self.known_files[self.current_path] = {
-            "folders": folders,
-            "files": files,
-            "total": len(folders) + len(files)
-        }
+        if self.settings.get("cache_visited", False):
+            self.known_files[self.current_path] = {
+                "folders": folders,
+                "files": files,
+                "total": len(folders) + len(files)
+            }
+        else:
+            self.known_files = {(self.current_path): {
+                "folders": folders,
+                "files": files,
+                "total": len(folders) + len(files)
+            }}
         return folders + files
 
     @property
@@ -206,30 +245,42 @@ class Explorer:
     def dimensions(self):
         return self.screen.getmaxyx()  # (height, width)
 
+    @staticmethod
+    def remove_parents(path: pathlib.Path):
+        # Remove any instances of ".." in the path by going to its folder
+        path_parts = path.parts
+        cwd = pathlib.Path(path_parts[0])
+        for part in path_parts[1:]:
+            if part == "..":
+                cwd = pathlib.Path(cwd).parent
+            else:
+                cwd /= part
+        return cwd
+
     def navigate(self, item: pathlib.Path):
         self.memo["preview"] = None
-        navigate_to = (self.current_path / item).resolve()
+        navigate_to = self.remove_parents(self.current_path / item)
         # If the user does not have read access to the item, do not navigate
-        if navigate_to == self.current_path.parent.resolve():
+        if navigate_to == self.remove_parents(self.current_path.parent):
             self.to_highlight = str(self.current_path).split("/")[-1]
         if not os.access(navigate_to, os.R_OK):
             self.memo["error"] = "Permission denied"
             return
         if os.path.isdir(navigate_to):
-            self.current_path = navigate_to.resolve()
+            self.current_path = navigate_to
             self.selection = None
-            self.search = ""
-            self.search_index = 0
+            self.entry = ""
+            self.entry_index = 0
             self.mode = Modes.default
-            self.clear()
+            self.generate_sections()
         elif os.path.isfile(navigate_to):
             ...  # TODO
 
     def render(self):
-        self.render_borders()
-
         for name, imported in self.modules[1].items():
             imported.callback(**self.get_externals(getattr(self.sections, name)))
+
+        self.render_borders()
 
     def key_hook(self, _, key, mode):  # _ is self, but it's passed in for consistency
         if mode == Modes.default:
@@ -297,6 +348,8 @@ class Explorer:
         # The first bit indicates if it is connected to the focused section
         for section, (height, width, top, left) in self.sections.json.items():
             colour_bit = 16 if section == self.mode_focus.get(self.mode) else 0
+            if colour_bit != 16 and self.settings.get("only_active_borders", False):
+                continue
             for i in range(width):
                 chars[(top - 1, left + i)] = chars.get((top - 1, left + i), 0) | 5 | colour_bit
                 chars[(top + height, left + i)] = chars.get((top + height, left + i), 0) | 5 | colour_bit
@@ -307,6 +360,8 @@ class Explorer:
         # Firstly, set every location to 00000
         for section, (height, width, top, left) in self.sections.json.items():
             colour_bit = 16 if section == self.mode_focus.get(self.mode) else 0
+            if colour_bit != 16 and self.settings.get("only_active_borders", False):
+                continue
             # Top left (Draw bottom and right connections)
             current = chars.get((top - 1, left - 1), 0)
             # Bitwise OR with 0110
@@ -369,6 +424,8 @@ class Explorer:
         }
 
     def render_parts(self, lines, height, width, add_line, add_text):
+        if len(lines) < height:
+            lines += [""] * (height - len(lines))
         for i, item in enumerate(lines[:height]):
             try:
                 if isinstance(item, tuple):

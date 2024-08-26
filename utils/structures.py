@@ -26,32 +26,72 @@ class Item:
                 self.link_from = os.path.realpath(self.location)
                 os.stat(self.link_from)  # Test if the link is broken
             except FileNotFoundError:
-                self.icon = Icons.file.broken_link
+                self._icon = Icons.file.broken_link
                 self.is_dir = False
-                self.size = 0
-                self.permissions = [0, 0, 0]
-                self.modified = 0
-                self.created = 0
-                self.owner = "Unknown"
-                self.group = "Unknown"
+                self._size = 0
+                self._permissions = [0, 0, 0]
+                self._modified = 0
+                self._owner = "Unknown"
+                self._group = "Unknown"
                 return
             self.is_dir = os.path.isdir(self.link_from or self.location)
-        self.size = 0
-        if not self.is_dir:
-            self.size = os.path.getsize(self.link_from or self.location)
-        stat = os.stat(self.link_from or self.location)
-        raw_permissions = stat.st_mode
-        octal_permissions = oct(raw_permissions)[-3:]
-        self.permissions = [int(octal_permissions[0]), int(octal_permissions[1]), int(octal_permissions[2])]
-        self.modified = os.path.getmtime(self.link_from or self.location)
 
-        owner_id = stat.st_uid
-        self.owner = getpwuid(owner_id).pw_name
-        group_id = stat.st_gid
-        self.group = getgrgid(group_id).gr_name
+        self._size = None
+        self._permissions = None
+        self._modified = None
+        self._owner = None
+        self._group = None
+        self._icon = None
+        self._stat = None
 
-        self.icon = identify_icon(self)
+    @property
+    def size(self):
+        if self._size is None:
+            self._size = 0
+            if not self.is_dir:
+                self._size = os.path.getsize(self.link_from or self.location)
+        return self._size
 
+    @property
+    def permissions(self):
+        if self._permissions is None:
+            raw_permissions = self.stat.st_mode
+            octal_permissions = oct(raw_permissions)[-3:]
+            self._permissions = [int(octal_permissions[0]), int(octal_permissions[1]), int(octal_permissions[2])]
+        return self._permissions
+
+    @property
+    def modified(self):
+        if self._modified is None:
+            self._modified = os.path.getmtime(self.link_from or self.location)
+        return self._modified
+
+    @property
+    def owner(self):
+        if self._owner is None:
+            owner_id = self.stat.st_uid
+            self._owner = getpwuid(owner_id).pw_name
+        return self._owner
+
+    @property
+    def stat(self):
+        if self._stat is None:
+            self._stat = os.stat(self.link_from or self.location)
+        return self._stat
+
+    @property
+    def icon(self):
+        if self._icon is None:
+            self._icon = identify_icon(self)
+        return self._icon
+
+    @property
+    def group(self):
+        if self._group is None:
+            stat = os.stat(self.link_from or self.location)
+            group_id = stat.st_gid
+            self._group = getgrgid(group_id).gr_name
+        return self._group
 
     @property
     def can_read(self):

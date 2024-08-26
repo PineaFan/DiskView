@@ -20,7 +20,7 @@ def calculate_visible_range(height, selection, total):
 def callback(explorer, height, width, add_line, add_text, **kwargs):
     # restrict = lambda name: name[:(width - 8)]  # Width, icon, space around icon, scrollbar
     def restrict(name: str) -> str:
-        max_width = width - 4
+        max_width = width - 3
         if len(name) <= max_width:
             return name
         return name[:(max_width - 1)] + " >"
@@ -57,11 +57,17 @@ def callback(explorer, height, width, add_line, add_text, **kwargs):
             if explorer.selection + 9 >= i + visible[0] >= explorer.selection:
                 # Add relative line numbers where the cursor would be
                 line_text = f"{i + visible[0] - explorer.selection} {line_text[2:]}"
+            # Add a - to the line above the cursor
+            elif explorer.selection == i + visible[0] + 1:
+                line_text = f"- {line_text[2:]}"
         elif not explorer.scroll_direction_down and explorer.settings.get("use_numeric_jump", False):
             # If this line is within the 9 before the selection
             if explorer.selection - 9 <= i + visible[0] <= explorer.selection:
                 # Add relative line numbers where the cursor would be
                 line_text = f"{explorer.selection - i - visible[0]} {line_text[2:]}"
+            # Add a - to the line below the cursor
+            elif explorer.selection == i + visible[0] - 1:
+                line_text = f"- {line_text[2:]}"
 
         add_line(i, restrict(line_text), item.row_colour(selected_item.location))
     # Add blank lines if needed
@@ -105,13 +111,13 @@ def key_hook(explorer, key, mode):
             explorer.navigate(explorer.current_path.parent)
         else:
             explorer.navigate(explorer.current_path / selected)
-    elif key == Keys.navigate_parent:
-        if explorer.current_path != pathlib.Path("/"):
-            explorer.navigate(explorer.current_path.parent)
     if mode == Modes.default:
         if key == Keys.scroll_up_page:
             # Change selection by the height of the "main" panel
             explorer.selection -= explorer.sections.main[0]
+        elif key == Keys.navigate_parent:
+            if explorer.current_path != pathlib.Path("/"):
+                explorer.navigate(explorer.current_path.parent)
         elif key == Keys.scroll_down_page:
             explorer.selection += explorer.sections.main[0]
         elif key == Keys.scroll_top:

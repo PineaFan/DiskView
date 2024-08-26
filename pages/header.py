@@ -1,43 +1,38 @@
 import pathlib
+import itertools
 from utils.colours import Colours
 
-def callback(explorer, width, add_text, add_line, **kwargs):
+def callback(explorer, height, width, add_text, add_line, **kwargs):
     # Get the current path
-    path = str(explorer.current_path)
-    # Get the user's home directory
-    home = str(pathlib.Path.home())
-    if path.startswith(home):
-        path = path.replace(home, "~", 1)
-    parts = path.split("/")
-    available_width = width
-    add_ellipsis = False
-    if len("/".join(parts)) > available_width:
-        available_width -= 3  # For the "..." at the start
-        add_ellipsis = True
-    while len("/".join(parts)) > available_width:
-        parts.pop(0)
-    if add_ellipsis:
-        parts.insert(0, "...")
-    # Filter out ""
-    parts = [part for part in parts if part]
-    # For each part, render it
-    x = 0
-    for i, part in enumerate(parts):
-        if not (i == 0 and (part == "~" or part == "...")):
-            add_text(0, x, "/", Colours.default)
-            x += 1
-        # Render the part
+    path = explorer.current_path.absolute()
+    cwd = pathlib.Path("/")
+    parts = []
+    for part in path.parts[1:]:
+        cwd /= part
         colour = Colours.default
-        if part == "~":
+        if cwd == path:
             colour = Colours.accent
-        elif i == len(parts) - 1:
-            colour = Colours.accent
+        elif cwd.is_symlink():
+            colour = Colours.magenta
         elif part.startswith("."):
             colour = Colours.warning
-        add_text(0, x, part, colour)
-        x += len(part)
-    if not parts:
-        add_text(0, 0, "/", Colours.default)
+        parts.append((part, colour))
+    if len(parts) >= 2 and parts[0][0] == "home" and parts[1][0] == explorer.username:
+        parts = [("~", Colours.accent)] + parts[2:]
+    else:
+        parts = [""] + parts
+    if path == pathlib.Path("/"):
+        parts = [("/", Colours.accent)]
+    add_ellipsis = False
+    # if 1 + len("/".join(parts)) > width:
+    #     add_ellipsis = True
+    #     while len(parts) > width - 3:
+    #         parts.pop(1)
+    if add_ellipsis:
+        parts = ["..."] + parts
+    parts = list(itertools.chain(*[[x, "/"] for x in parts]))[:-1]
+    # explorer.add_text(0, 0, str(parts))
+    explorer.render_parts([parts], height, width, add_line, add_text)
 
     # Second line
     if explorer.memo.get("error", False):
@@ -45,13 +40,14 @@ def callback(explorer, width, add_text, add_line, **kwargs):
         return
     # If all items are on screen
     current = explorer.known_files[explorer.current_path]
+    info = f" ({len(current.get('folders', 0))} folders, {len(current.get('files', 0))} files)"
     if explorer.memo.get("all_on_screen", False):
-        add_text(1, 0, f"Showing all {current.get('total')} items", Colours.default)
+        add_line(1, f"Showing all {current.get('total')} items" + info, Colours.default)
     elif current.get("total", 0) > 0:
         files_from, files_to = explorer.memo["visible"]
-        add_text(1, 0, f"Showing {max(files_from, 1)} to {files_to} of {current.get('total')} items", Colours.default)
+        add_line(1, f"Showing {max(files_from, 1)} to {files_to} of {current.get('total')} items" + info, Colours.default)
     else:
-        add_text(1, 0, "No items", Colours.default)
+        add_line(1, "No items", Colours.default)
 
 def key_hook(explorer, key, mode):
     ...
