@@ -3,6 +3,7 @@ import os
 import sys
 import curses
 import time
+import platform
 
 from pages import sidebar
 from pages import files
@@ -14,6 +15,11 @@ from utils.enums import Modes
 from utils.colours import Colours
 from utils.structures import Item
 from utils.keymap import Keys
+
+
+if platform.system().lower() != "windows":
+    print("Windows is not supported (Due to differing file permissions and Curses breaking entirely)")
+    exit(1)
 
 
 class GridHelper:
