@@ -19,6 +19,27 @@ class Keys:
             else:
                 self.__dict__[key] = value
 
+
+keynames = {
+    "default": {
+        "pgUp": "Page Up",
+        "pgDown": "Page Down",
+        "home": "Home",
+        "end": "End",
+        "up": "↑",
+        "down": "↓",
+        "left": "←",
+        "right": "→",
+    },
+    "mac": {
+        "pgUp": "fn+↑",
+        "pgDown": "fn+↓",
+        "home": "fn+←",
+        "end": "fn+→"
+    },
+}
+
+
 with open("keys.json") as f:
     keys = json.load(f)
 
@@ -26,3 +47,12 @@ with open("keys.json") as f:
 device = platform.system().lower().replace("darwin", "mac")
 
 Keys = Keys(keys.get(device, {}))
+
+def key_name(key):
+    # If the key is in the keynames dictionary for that device, use that
+    if key in keynames.get(device, {}):
+        return keynames[device][key]
+    elif key in keynames["default"]:
+        return keynames["default"][key]
+    else:
+        return key
