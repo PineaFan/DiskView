@@ -61,7 +61,7 @@ def callback(explorer, height, width, add_line, add_text, **kwargs):
 
     lines = []  # List of lists of (text, colour) or (text, colour)
     lines.append((f" {current.icon} {file_name[:name_width]}", Colours.accent))
-    if current.is_link:
+    if current.is_link and current.link_from:
         lines.append((f" -> {current.link_from}", Colours.warning))
 
     u_rwx = int_to_rwx(current.permissions[0])
@@ -105,9 +105,8 @@ def callback(explorer, height, width, add_line, add_text, **kwargs):
                     add_text(i, x, part)
                     x += len(part)
                 else:
-                    add_text(i, x, part[0][:width], part[1])
+                    add_text(i, x, part[0][:(width - x)], part[1])
                     x += len(part[0])
-
 
 
 def key_hook(explorer, key, mode):

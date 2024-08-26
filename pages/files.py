@@ -51,12 +51,12 @@ def callback(explorer, height, width, add_line, add_text, **kwargs):
         if explorer.selection == i + visible[0]:
             explorer.current_item = item
             line_text = f"{Icons.generic.chevron.right}{line_text[2:]}"
-        elif explorer.scroll_direction_down:
+        elif explorer.scroll_direction_down and explorer.settings.get("use_numeric_jump", False):
             # If this line is within the 9 after the selection
             if explorer.selection + 9 >= i + visible[0] >= explorer.selection:
                 # Add relative line numbers where the cursor would be
                 line_text = f"{i + visible[0] - explorer.selection} {line_text[2:]}"
-        elif not explorer.scroll_direction_down:
+        elif not explorer.scroll_direction_down and explorer.settings.get("use_numeric_jump", False):
             # If this line is within the 9 before the selection
             if explorer.selection - 9 <= i + visible[0] <= explorer.selection:
                 # Add relative line numbers where the cursor would be
@@ -91,6 +91,7 @@ def callback(explorer, height, width, add_line, add_text, **kwargs):
 
 def key_hook(explorer, key, mode):
     if mode == Modes.default:
+        selection_before = explorer.selection
         if key == "KEY_UP":
             explorer.selection -= 1
         elif key == "KEY_DOWN":
@@ -115,3 +116,10 @@ def key_hook(explorer, key, mode):
         elif key == "KEY_BACKSPACE":
             if explorer.current_path != pathlib.Path("/"):
                 explorer.navigate(explorer.current_path.parent)
+        elif key == "-":
+            explorer.scroll_direction_down = not explorer.scroll_direction_down
+        elif key.isnumeric() and explorer.settings.get("use_numeric_jump", False):
+            explorer.selection += int(key) * (1 if explorer.scroll_direction_down else -1)
+
+        if explorer.selection != selection_before:
+            explorer.memo["preview"] = None

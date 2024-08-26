@@ -7,6 +7,8 @@ import time
 from pages import sidebar
 from pages import files
 from pages import header
+from pages import preview
+
 from enums import Modes
 from colours import Colours
 from structures import Item
@@ -48,9 +50,14 @@ class GridHelper:
 
         maximum, minimum = maximum or float("inf"), minimum or 0
         if width is None and height is None:
-            raise ValueError("Either width or height must be provided.")
+            # Use the remaining space
+            width, height = remaining[1], remaining[0]
         if width is not None and height is not None:
             height = None
+        if width and width < 0:
+            width = remaining[1] + width - (1 if self.padding else 0)
+        if height and height < 0:
+            height = remaining[0] + height - (1 if self.padding else 0)
 
         if width:
             if isinstance(width, float):
@@ -116,7 +123,9 @@ class Explorer:
 
         self.settings = {
             "show_hidden_files": False,
-            "show_permission_denied": True
+            "show_permission_denied": True,
+            "show_preview": True,
+            "use_numeric_jump": False
         }
 
         self.screen = screen
@@ -129,7 +138,21 @@ class Explorer:
         # Define the colours
         self.colours = Colours()
 
-        self.key_hooks = [files.key_hook, self.key_hook, header.key_hook]
+        self.mode_focus = {
+            Modes.default: "files",
+            Modes.search: "footer"
+        }
+
+    @property
+    def modules(self):
+        modules = {
+            "main": files,
+            "header": header,
+            "sidebar": sidebar
+        }
+        if self.settings.get("show_preview", True):
+            modules["preview"] = preview
+        return modules
 
     @property
     def items(self):
@@ -169,6 +192,7 @@ class Explorer:
         return self.screen.getmaxyx()  # (height, width)
 
     def navigate(self, item: pathlib.Path):
+        self.memo["preview"] = None
         navigate_to = (self.current_path / item).resolve()
         # If the user does not have read access to the item, do not navigate
         if navigate_to == self.current_path.parent.resolve():
@@ -186,9 +210,8 @@ class Explorer:
     def render(self):
         self.render_borders()
 
-        files.callback(**self.get_externals(self.sections.main))
-        sidebar.callback(**self.get_externals(self.sections.sidebar))
-        header.callback(**self.get_externals(self.sections.header))
+        for name, imported in self.modules.items():
+            imported.callback(**self.get_externals(getattr(self.sections, name)))
 
     def key_hook(self, _, key, mode):  # _ is self, but it's passed in for consistency
         with open("/home/pinea/Code/DiskView/log.txt", "a") as f:
@@ -197,16 +220,12 @@ class Explorer:
         if mode == Modes.default:
             if key == "q":
                 raise KeyboardInterrupt
-            if key == "-":
-                self.scroll_direction_down = not self.scroll_direction_down
-            if key.isnumeric():
-                self.selection += int(key) * (1 if self.scroll_direction_down else -1)
 
     def handle_key(self, key):
         self.memo["error"] = None
         key = curses.keyname(key).decode("utf-8")
-        for hook in self.key_hooks:
-            hook(self, key, self.mode)
+        for hook in self.modules.values():
+            hook.key_hook(self, key, self.mode)
 
     def teardown(self):
         self.screen.clear()
@@ -216,6 +235,7 @@ class Explorer:
     def resize_hook(self, force=False):
         new_dimensions = self.dimensions
         if new_dimensions != self.size_last_frame or force:
+            self.memo["preview"] = None
             self.screen.clear()
             self.size_last_frame = new_dimensions
 
@@ -224,7 +244,8 @@ class Explorer:
             self.sections.add_section("footer", height=1, flip_align=True)
             self.sections.add_section("sidebar", width=2/5, flip_align=True)
 
-            self.sections.add_section("preview", within="sidebar", height=1/2, flip_align=True)
+            if self.settings.get("show_preview", True):
+                self.sections.add_section("preview", within="sidebar", height=-5, flip_align=True)
 
             self.sections.add_remaining("main")
 
@@ -242,39 +263,38 @@ class Explorer:
         self.add_text(y, x, text, colour)
 
     def render_borders(self):
-        corner_chars = {}  # (y, x): 0000 to indicate which four edges are present (top, right, bottom, left)
-        for _, (height, width, top, left) in self.sections.json.items():
-            # Draw the top edge
+        highlight = self.colours.blue
+        chars = {}  # (y, x): 00000 to indicate which four edges are present (top, right, bottom, left)
+        # The first bit indicates if it is connected to the focused section
+        for section, (height, width, top, left) in self.sections.json.items():
+            colour_bit = 16 if section == self.mode_focus.get(self.mode) else 0
             for i in range(width):
-                self.set_char(top - 1, left + i, "─")
-            # Draw the bottom edge
-            for i in range(width):
-                self.set_char(top + height, left + i, "─")
-            # Draw the left edge
+                chars[(top - 1, left + i)] = chars.get((top - 1, left + i), 0) | 5 | colour_bit
+                chars[(top + height, left + i)] = chars.get((top + height, left + i), 0) | 5 | colour_bit
             for i in range(height):
-                self.set_char(top + i, left - 1, "│")
-            # Draw the right edge
-            for i in range(height):
-                self.set_char(top + i, left + width, "│")
+                chars[(top + i, left - 1)] = chars.get((top + i, left - 1), 0) | 10 | colour_bit
+                chars[(top + i, left + width)] = chars.get((top + i, left + width), 0) | 10 | colour_bit
         # Draw the corners around each section
-        # Firstly, set every location to 0000
-        for _, (height, width, top, left) in self.sections.json.items():
+        # Firstly, set every location to 00000
+        for section, (height, width, top, left) in self.sections.json.items():
+            colour_bit = 16 if section == self.mode_focus.get(self.mode) else 0
             # Top left (Draw bottom and right connections)
-            current = corner_chars.get((top - 1, left - 1), 0)
+            current = chars.get((top - 1, left - 1), 0)
             # Bitwise OR with 0110
-            corner_chars[(top - 1, left - 1)] = current | 6
+            chars[(top - 1, left - 1)] = current | 6 | colour_bit
             # Top right
-            current = corner_chars.get((top - 1, left + width), 0)
+            current = chars.get((top - 1, left + width), 0)
             # Bitwise OR with 0011
-            corner_chars[(top - 1, left + width)] = current | 3
+            chars[(top - 1, left + width)] = current | 3 | colour_bit
             # Bottom left
-            current = corner_chars.get((top + height, left - 1), 0)
+            current = chars.get((top + height, left - 1), 0)
             # Bitwise OR with 1100
-            corner_chars[(top + height, left - 1)] = current | 12
+            chars[(top + height, left - 1)] = current | 12 | colour_bit
             # Bottom right
-            current = corner_chars.get((top + height, left + width), 0)
+            current = chars.get((top + height, left + width), 0)
             # Bitwise OR with 1001
-            corner_chars[(top + height, left + width)] = current | 9
+            chars[(top + height, left + width)] = current | 9 | colour_bit
+
         # Now, draw the corners (top, right, bottom, left)
         box_chars = {
             0: None,  # Do not draw a corner
@@ -294,10 +314,11 @@ class Explorer:
             14: "├",  # 1110, top right bottom
             15: "┼"   # 1111, top right bottom left
         }
-        for (y, x), value in corner_chars.items():
-            char = box_chars[value]
+        for (y, x), value in chars.items():
+            char = box_chars[value & 0b1111]
+            to_highlight = value & 0b10000 == 0b10000
             if char:
-                self.set_char(y, x, char)
+                self.set_char(y, x, char, highlight if to_highlight else Colours.default)
 
     def external_set_char(self, y_offset, x_offset):
         return lambda *args: self.set_char(args[0] + y_offset, args[1] + x_offset, args[2], len(args) > 3 and args[3] or 0)
