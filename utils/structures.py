@@ -1,7 +1,12 @@
 import os
 import pathlib
-from pwd import getpwuid
-from grp import getgrgid
+try:
+    from pwd import getpwuid
+    from grp import getgrgid
+except ImportError:
+    getpwuid = lambda x: "Unknown"
+    getgrgid = lambda x: "Unknown"
+
 
 from utils.icons import identify_icon, Icons
 from utils.colours import row_highlight_colour
@@ -41,12 +46,13 @@ class Item:
         octal_permissions = oct(raw_permissions)[-3:]
         self.permissions = [int(octal_permissions[0]), int(octal_permissions[1]), int(octal_permissions[2])]
         self.modified = os.path.getmtime(self.link_from or self.location)
+        self.icon = identify_icon(self)
+
         owner_id = stat.st_uid
         self.owner = getpwuid(owner_id).pw_name
         group_id = stat.st_gid
         self.group = getgrgid(group_id).gr_name
 
-        self.icon = identify_icon(self)
 
     @property
     def can_read(self):
