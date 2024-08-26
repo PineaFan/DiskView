@@ -146,7 +146,7 @@ class Explorer:
         self.colours = Colours()
 
         self.mode_focus = {
-            Modes.default: "files",
+            Modes.default: "main",
             Modes.search: "footer"
         }
 
@@ -250,7 +250,7 @@ class Explorer:
             self.sections.add_section("sidebar", width=2/5, flip_align=True)
 
             if self.settings.get("show_preview", True):
-                self.sections.add_section("preview", within="sidebar", height=-5, flip_align=True)
+                self.sections.add_section("preview", within="sidebar", height=-6, flip_align=True)
 
             self.sections.add_remaining("main")
 
@@ -346,22 +346,25 @@ class Explorer:
 
     def render_parts(self, lines, height, width, add_line, add_text):
         for i, item in enumerate(lines[:height]):
-            if isinstance(item, tuple):
-                add_line(i, item[0][:width], item[1])
-            elif isinstance(item, str):
-                add_line(i, item[:width], Colours.default)
-            else:
-                # Clear the line
-                add_line(i, "", Colours.default)
-                # For each part of text, render it
-                x = 0
-                for part in item:
-                    if isinstance(part, str):
-                        add_text(i, x, part)
-                        x += len(part)
-                    else:
-                        add_text(i, x, part[0][:(width - x)], part[1])
-                        x += len(part[0])
+            try:
+                if isinstance(item, tuple):
+                    add_line(i, item[0][:width], item[1])
+                elif isinstance(item, str):
+                    add_line(i, item[:width], Colours.default)
+                else:
+                    # Clear the line
+                    add_line(i, "", Colours.default)
+                    # For each part of text, render it
+                    x = 0
+                    for part in item:
+                        if isinstance(part, str):
+                            add_text(i, x, part)
+                            x += len(part)
+                        else:
+                            add_text(i, x, part[0][:(width - x)], part[1])
+                            x += len(part[0])
+            except ValueError:
+                add_line(i, "[Encoding error]", Colours.error)
 
     def clear(self):
         self.screen.clear()

@@ -1,4 +1,6 @@
 from utils.colours import Colours
+from utils.icons import Icons
+import os
 
 
 def get_preview_lines(file, height, width):
@@ -9,34 +11,48 @@ def get_preview_lines(file, height, width):
     if not file.encoding == "UTF-8":
         return ["Binary file", f"Encoding: {file.encoding}"]
     file.seek(0)
-    lines = [""]
-    max_chars = height * width * 5
-    read = 0
+    lines = []
     while len(lines) <= height:
-        # Read one character at a time
-        char = file.read(1)
-        if not char:
+        # Read one line at a time (to avoid reading the whole file)
+        line = file.readline()
+        if not line:
             break
-        if char == "\n":
-            lines.append("")
-        else:
-            lines[-1] += char
-        if len(lines[-1]) >= width:
-            # Ignore the rest of the line, find the next newline
-            while char != "\n":
-                read += 1
-                if read > max_chars:
-                    lines.append("...")
-                    break
-                char = file.read(1)
+        # Remove any trailing newline characters
+        line = line.rstrip()
+        # Truncate the line if it's too long
+        line = line[:width]
+        # Add the line to the list
+        lines.append(line)
     return lines[:height]
+
+def plural(amount, thing):
+    amount = int(amount)
+    return f"{amount} " + (thing if amount == 1 else f"{thing}s")
+
+def preview_directory(current, height, width):
+    files, folders = [], []
+    for item in os.scandir(current.location):
+        if item.is_dir():
+            folders.append(item)
+        else:
+            files.append(item)
+    file_count, folder_count = len(files), len(folders)
+    lines = []
+    for item in folders:
+        lines.append((f" {Icons.folder.default} {item.name[:(width - 5)]}", Colours.default))
+    for item in files:
+        lines.append((f" {Icons.file.default} {item.name[:(width - 5)]}", Colours.default))
+    available_height = height - 1
+    lines = lines[:available_height]
+    lines.append((f" {Icons.generic.total} {plural(folder_count, 'folder')}, {plural(file_count, 'file')}", Colours.accent))
+    return [l[:width] for l in lines[:height]]
 
 
 def callback(explorer, height, width, add_line, add_text, **kwargs):
     current = explorer.current_item
     lines = []
     if current.is_dir:
-        lines = ["Directory"]
+        lines = preview_directory(current, height, width)
     elif explorer.memo.get("preview"):
         lines = explorer.memo["preview"]
     else:

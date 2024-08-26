@@ -37,6 +37,8 @@ class Item:
                 return
             self.is_dir = os.path.isdir(self.link_from or self.location)
         self.size = 0
+        if not self.is_dir:
+            self.size = os.path.getsize(self.link_from or self.location)
         stat = os.stat(self.link_from or self.location)
         raw_permissions = stat.st_mode
         octal_permissions = oct(raw_permissions)[-3:]

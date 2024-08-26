@@ -1,6 +1,7 @@
 from utils.colours import Colours
 from utils.icons import Icons
 from utils.keymap import key_name
+from utils.enums import Modes
 
 def callback(explorer, height, width, add_line, add_text, **kwargs):
     lines = []
@@ -16,3 +17,7 @@ def callback(explorer, height, width, add_line, add_text, **kwargs):
 
 def key_hook(explorer, key, mode):
     ...
+    # if key == key_name("/") and mode == Modes.default:
+    #     explorer.mode = Modes.search
+    # if key == key_name("esc") and mode == Modes.search:
+    #     explorer.mode = Modes.default

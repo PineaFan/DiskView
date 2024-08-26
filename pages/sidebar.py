@@ -1,6 +1,7 @@
 from utils.colours import Colours
 import datetime
 
+
 def int_to_rwx(permissions):
     rwx = ""
     # Permissions is an integer with 3 digits
@@ -87,6 +88,21 @@ def callback(explorer, height, width, add_line, add_text, **kwargs):
         (format_time(current.modified), Colours.accent),
         (" (" + delta_duration(datetime.datetime.now().timestamp() - current.modified) + " ago)", Colours.default)
     ])
+    if current.size:
+        # Calculate the size in human-readable format
+        bytes = current.size
+        units = [("KB", "KiB"), ("MB", "MiB"), ("GB", "GiB"), ("TB", "TiB")]
+        unit = 0
+        kb, kib = bytes / 1000, bytes / 1024
+        while kb > 1_000:
+            unit += 1
+            kb /= 1000
+            kib /= 1024
+        lines.append([
+            (" Size: ", Colours.default),
+            (f"{kb:.2f} {units[unit][0]}", Colours.accent),
+            (f" ({kib:.2f} {units[unit][1]}, {bytes:,} bytes)", Colours.default)
+        ])
     # Shortest duration will be modified.
     explorer.memo["refresh_interval"] = screen_refresh_interval(current.modified)
 

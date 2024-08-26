@@ -39,7 +39,8 @@ icons = {
     },
     "generic": {
         "chevron": { "right": " ", "down": " ", "up": " ", "left": " "},
-        "git": "󰊢 "
+        "git": "󰊢 ",
+        "total": "󰒠 "
     }
 }
 
@@ -105,7 +106,7 @@ def identify_file_icon(file) -> str:
         "lock": "lock".split(),
         "pdf": "pdf epub xps cbz cbr".split(),
         "video": "mp4 avi mkv mov wmv flv webm hevc".split(),
-        "cube": "mcworld mcpack mcfunction blend obj fbx stl".split(),
+        "cube": "mcworld mcpack mcfunction blend obj fbx stl mcmeta".split(),
         "db": "db sql mdb accdb dbf sqlite3 sqlite2 sqlite".split(),
         "font": "ttf otf woff woff2 eot".split(),
         "code": "py js ts html css php cpp c h sh bat ps1 ps1xml psd1 psm1".split(),
