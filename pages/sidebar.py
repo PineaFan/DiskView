@@ -1,4 +1,4 @@
-from colours import Colours
+from utils.colours import Colours
 import datetime
 
 def int_to_rwx(permissions):

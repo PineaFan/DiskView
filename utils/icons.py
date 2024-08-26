@@ -1,5 +1,3 @@
-import os
-
 icons = {
     "folder": {
         "default": " ",

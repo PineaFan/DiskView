@@ -3,8 +3,8 @@ import pathlib
 from pwd import getpwuid
 from grp import getgrgid
 
-from icons import identify_icon, Icons
-from colours import row_highlight_colour
+from utils.icons import identify_icon, Icons
+from utils.colours import row_highlight_colour
 
 
 class Item:

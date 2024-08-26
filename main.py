@@ -8,10 +8,12 @@ from pages import sidebar
 from pages import files
 from pages import header
 from pages import preview
+from pages import footer
 
-from enums import Modes
-from colours import Colours
-from structures import Item
+from utils.enums import Modes
+from utils.colours import Colours
+from utils.structures import Item
+from utils.keymap import Keys
 
 
 class GridHelper:
@@ -148,7 +150,8 @@ class Explorer:
         modules = {
             "main": files,
             "header": header,
-            "sidebar": sidebar
+            "sidebar": sidebar,
+            "footer": footer
         }
         if self.settings.get("show_preview", True):
             modules["preview"] = preview
@@ -214,11 +217,8 @@ class Explorer:
             imported.callback(**self.get_externals(getattr(self.sections, name)))
 
     def key_hook(self, _, key, mode):  # _ is self, but it's passed in for consistency
-        with open("/home/pinea/Code/DiskView/log.txt", "a") as f:
-            f.write(f"{key}\n")
-
         if mode == Modes.default:
-            if key == "q":
+            if key == "q" or key == Keys.escape:
                 raise KeyboardInterrupt
 
     def handle_key(self, key):

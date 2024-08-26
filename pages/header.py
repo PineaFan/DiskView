@@ -1,5 +1,5 @@
 import pathlib
-from colours import Colours
+from utils.colours import Colours
 
 def callback(explorer, width, add_text, add_line, **kwargs):
     # Get the current path

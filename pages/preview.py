@@ -1,4 +1,4 @@
-from colours import Colours
+from utils.colours import Colours
 
 
 def get_preview_lines(file, height, width):
@@ -36,9 +36,8 @@ def callback(explorer, height, width, add_line, add_text, **kwargs):
     current = explorer.current_item
     lines = []
     if current.is_dir:
-        add_line(0, current.name, Colours.error)
-        return
-    if explorer.memo.get("preview"):
+        lines = ["Directory"]
+    elif explorer.memo.get("preview"):
         lines = explorer.memo["preview"]
     else:
         location = current.link_from or current.location

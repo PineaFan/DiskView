@@ -1,8 +1,9 @@
 import pathlib
-from icons import Icons
-from colours import Colours
-from structures import Item
-from enums import Modes
+from utils.icons import Icons
+from utils.colours import Colours
+from utils.structures import Item
+from utils.enums import Modes
+from utils.keymap import Keys
 
 
 def calculate_visible_range(height, selection, total):
@@ -92,28 +93,28 @@ def callback(explorer, height, width, add_line, add_text, **kwargs):
 def key_hook(explorer, key, mode):
     if mode == Modes.default:
         selection_before = explorer.selection
-        if key == "KEY_UP":
+        if key == Keys.arrow_up:
             explorer.selection -= 1
-        elif key == "KEY_DOWN":
+        elif key == Keys.arrow_down:
             explorer.selection += 1
-        elif key == "KEY_PPAGE":
+        elif key == Keys.scroll_up_page:
             # Change selection by the height of the "main" panel
             explorer.selection -= explorer.sections.main[0]
-        elif key == "KEY_NPAGE":
+        elif key == Keys.scroll_down_page:
             explorer.selection += explorer.sections.main[0]
-        elif key == "KEY_HOME":
+        elif key == Keys.scroll_top:
             explorer.selection = 0
-        elif key == "KEY_END":
+        elif key == Keys.scroll_bottom:
             total = explorer.known_items
             total = len(total["files"]) + len(total["folders"]) + (1 if explorer.current_path != pathlib.Path("/") else 0)
             explorer.selection = total - 1
-        elif key == "^J":
+        elif key == Keys.navigate_into:
             selected = explorer.current_item.location
             if selected == "..":
                 explorer.navigate(explorer.current_path.parent)
             else:
                 explorer.navigate(explorer.current_path / selected)
-        elif key == "KEY_BACKSPACE":
+        elif key == Keys.navigate_parent:
             if explorer.current_path != pathlib.Path("/"):
                 explorer.navigate(explorer.current_path.parent)
         elif key == "-":
