@@ -27,13 +27,25 @@ class GridHelper:
     def json(self):
         return self.sections
 
-    def add_section(self, name, height=None, width=None, flip_align=False, maximum=None, minimum=None):
+    def add_section(self, name, height=None, width=None, flip_align=False, maximum=None, minimum=None, within=None):
         """
         Either width or height must be provided. If both are provided, width will be used.
         If an integer is provided, it will be used as the width or height.
         If a float is provided, it will be used as a fraction of the total screen, rounded down.
         flip_align will align the section to the bottom or right, rather than the top or left.
+        within will align the section within another section, rather than the remaining space.
         """
+
+        # If "within" is provided, remaining space should be based on that section, rather than unused space
+        remaining = self.sections[within] if within else self.remaining
+        def update(index, amount, negative=True):
+            amount += (1 if self.padding else 0)
+            amount *= (-1 if negative else 1 )
+            if within:
+                self.sections[within][index] += amount
+            else:
+                self.remaining[index]  += amount
+
         maximum, minimum = maximum or float("inf"), minimum or 0
         if width is None and height is None:
             raise ValueError("Either width or height must be provided.")
@@ -42,42 +54,42 @@ class GridHelper:
 
         if width:
             if isinstance(width, float):
-                width = int(width * self.width)
+                width = int(width * remaining[1])
             width = max(minimum, min(width, maximum))
         else:
             if isinstance(height, float):
-                height = int(height * self.height)
+                height = int(height * remaining[0])
             height = max(minimum, min(height, maximum))
-        if width and width > self.remaining[1]:
+        if width and width > remaining[1]:
             raise ValueError("Section width exceeds remaining space.")
-        if height and height > self.remaining[0]:
+        if height and height > remaining[0]:
             raise ValueError("Section height exceeds remaining space.")
 
         if height and not flip_align:
             # Align to the top
-            self.sections[name] = (height, self.remaining[1], self.remaining[2], self.remaining[3])
+            self.sections[name] = [height, remaining[1], remaining[2], remaining[3]]
             # Remove the height from the remaining space, and update the top position
-            self.remaining[0] -= height + (1 if self.padding else 0)
-            self.remaining[2] += height + (1 if self.padding else 0)
+            update(0, height)
+            update(2, height, negative=False)
         elif height and flip_align:
             # Align to the bottom
-            self.sections[name] = (height, self.remaining[1], self.remaining[2] + self.remaining[0] - height, self.remaining[3])
+            self.sections[name] = [height, remaining[1], remaining[2] + remaining[0] - height, remaining[3]]
             # Remove the height from the remaining space
-            self.remaining[0] -= height + (1 if self.padding else 0)
+            update(0, height)
         elif width and not flip_align:
             # Align to the left
-            self.sections[name] = (self.remaining[0], width, self.remaining[2], self.remaining[3])
+            self.sections[name] = [remaining[0], width, remaining[2], remaining[3]]
             # Remove the width from the remaining space, and update the left position
-            self.remaining[1] -= width + (1 if self.padding else 0)
-            self.remaining[3] += width + (1 if self.padding else 0)
+            update(1, width)
+            update(3, width, negative=False)
         elif width and flip_align:
             # Align to the right
-            self.sections[name] = (self.remaining[0], width, self.remaining[2], self.remaining[3] + self.remaining[1] - width)
+            self.sections[name] = [remaining[0], width, remaining[2], remaining[3] + remaining[1] - width]
             # Remove the width from the remaining space
-            self.remaining[1] -= width + (1 if self.padding else 0)
+            update(1, width)
 
     def add_remaining(self, name):
-        self.sections[name] = tuple(self.remaining)
+        self.sections[name] = self.remaining
 
     def __getattribute__(self, name: str) -> any:
         if name in ["add_section", "add_remaining", "json", "sections", "width", "height", "padding", "remaining"] or name.startswith("__"):
@@ -90,7 +102,9 @@ class Explorer:
         self.current_path = start_path or pathlib.Path.home()
         self.current_item = None
         self.selection = 0
+        self.to_highlight = None
         self.folder_details = None
+        self.scroll_direction_down = True
 
         self.username = os.getlogin()
         self.groups = os.getgroups()
@@ -102,7 +116,7 @@ class Explorer:
 
         self.settings = {
             "show_hidden_files": False,
-            "show_permission_denied": False
+            "show_permission_denied": True
         }
 
         self.screen = screen
@@ -155,14 +169,16 @@ class Explorer:
         return self.screen.getmaxyx()  # (height, width)
 
     def navigate(self, item: pathlib.Path):
-        navigate_to = self.current_path / item
+        navigate_to = (self.current_path / item).resolve()
         # If the user does not have read access to the item, do not navigate
+        if navigate_to == self.current_path.parent.resolve():
+            self.to_highlight = str(self.current_path).split("/")[-1]
         if not os.access(navigate_to, os.R_OK):
             self.memo["error"] = "Permission denied"
             return
         if os.path.isdir(navigate_to):
             self.current_path = navigate_to.resolve()
-            self.selection = 0
+            self.selection = None
             self.clear()
         elif os.path.isfile(navigate_to):
             ...  # TODO
@@ -174,15 +190,23 @@ class Explorer:
         sidebar.callback(**self.get_externals(self.sections.sidebar))
         header.callback(**self.get_externals(self.sections.header))
 
-    def key_hook(self, _, key):  # _ is self, but it's passed in for consistency
-        if key == "q":
-            raise KeyboardInterrupt
+    def key_hook(self, _, key, mode):  # _ is self, but it's passed in for consistency
+        with open("/home/pinea/Code/DiskView/log.txt", "a") as f:
+            f.write(f"{key}\n")
+
+        if mode == Modes.default:
+            if key == "q":
+                raise KeyboardInterrupt
+            if key == "-":
+                self.scroll_direction_down = not self.scroll_direction_down
+            if key.isnumeric():
+                self.selection += int(key) * (1 if self.scroll_direction_down else -1)
 
     def handle_key(self, key):
         self.memo["error"] = None
         key = curses.keyname(key).decode("utf-8")
         for hook in self.key_hooks:
-            hook(self, key)
+            hook(self, key, self.mode)
 
     def teardown(self):
         self.screen.clear()
@@ -199,6 +223,9 @@ class Explorer:
             self.sections.add_section("header", height=2)
             self.sections.add_section("footer", height=1, flip_align=True)
             self.sections.add_section("sidebar", width=2/5, flip_align=True)
+
+            self.sections.add_section("preview", within="sidebar", height=1/2, flip_align=True)
+
             self.sections.add_remaining("main")
 
     def set_char(self, y, x, char, colour=0):
@@ -304,7 +331,8 @@ def main(screen, start_path=None):
 
             explorer.render()
             renders_since_keypress += 1
-            screen.timeout(10_000 if renders_since_keypress > 1 else 100)
+            timeout = explorer.memo.get("refresh_interval", 10_000)
+            screen.timeout(timeout if renders_since_keypress > 1 else 100)
             key = screen.getch()
             if key != -1:
                 explorer.handle_key(key)

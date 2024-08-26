@@ -1,5 +1,5 @@
 from colours import Colours
-
+import datetime
 
 def int_to_rwx(permissions):
     rwx = ""
@@ -13,30 +13,102 @@ def int_to_rwx(permissions):
     return rwx
 
 
-def callback(explorer, height, width, add_line, **kwargs):
-    current = explorer.current_item
-    name_width = width - 5  # Padding + icon
-    file_name = current.name
-    # Split the name into chunks of name_width
-    chunks = [file_name[i:i + name_width] for i in range(0, len(file_name), name_width)]
+def plural(amount, thing):
+    amount = int(amount)
+    return f"{amount} " + (thing if amount == 1 else f"{thing}s")
 
-    lines = []  # Tuples of (line, text)
-    lines.append((f" {current.icon} {chunks[0]}", Colours.accent))
-    if len(chunks) > 1:
-        for chunk in chunks[1:]:
-            lines.append((f"    {chunk}", Colours.accent))
+def delta_duration(seconds):  # Seconds
+    if seconds < 60:
+        return plural(seconds, "second")
+    minutes = seconds / 60
+    if minutes < 60:
+        return plural(minutes, "minute")
+    hours = minutes / 60
+    if hours < 24:
+        return plural(hours, "hour")
+    days = hours / 24
+    if days < 7:
+        return plural(days, "day")
+    weeks = days / 7
+    if weeks < 4:
+        return plural(weeks, "week")
+    months = days / 30
+    if months < 12:
+        return plural(months, "month")
+    years = days / 365
+    return plural(years, "year")
+
+
+def format_time(date: float):
+    date = datetime.datetime.fromtimestamp(date)
+    return date.strftime("%Y-%m-%d %H:%M")
+
+def screen_refresh_interval(modified_date: float):
+    seconds = datetime.datetime.now().timestamp() - modified_date
+    groups = [60, 60, 24, 7, 30, 12]
+    # For each group, if multiplying all previous groups is less than the current seconds, divide by the group
+    for i, group in enumerate(groups):
+        if seconds / (group ** i) < 1:
+            return int(seconds)
+        seconds /= group ** i
+    return int(seconds)
+
+
+def callback(explorer, height, width, add_line, add_text, **kwargs):
+    current = explorer.current_item
+    name_width = width - 4  # Padding + icon
+    file_name = current.name
+
+    lines = []  # List of lists of (text, colour) or (text, colour)
+    lines.append((f" {current.icon} {file_name[:name_width]}", Colours.accent))
+    if current.is_link:
+        lines.append((f" -> {current.link_from}", Colours.warning))
 
     u_rwx = int_to_rwx(current.permissions[0])
     g_rwx = int_to_rwx(current.permissions[1])
     a_rwx = int_to_rwx(current.permissions[2])
     character = "l" if current.is_link else "d" if current.is_dir else "."
-    lines.append((f" {character}/{u_rwx}/{g_rwx}/{a_rwx}", Colours.default))
-    lines.append((f" Owner: {current.owner} | Group: {current.group}", Colours.default))
+    lines.append([
+        f" {character}/",
+        (f"{u_rwx}", Colours.success), f"/",
+        (f"{g_rwx}", Colours.warning), f"/",
+        (f"{a_rwx}", Colours.error)
+    ])
+    lines.append([
+        f" Owner: ",
+        (current.owner, Colours.success),
+        f" | Group: ",
+        (current.group, Colours.warning)
+    ])
 
-    for i, (line, colour) in enumerate(lines):
-        add_line(i, line, colour)
+
+    lines.append([
+        (" M: ", Colours.default),
+        (format_time(current.modified), Colours.accent),
+        (" (" + delta_duration(datetime.datetime.now().timestamp() - current.modified) + " ago)", Colours.default)
+    ])
+    # Shortest duration will be modified.
+    explorer.memo["refresh_interval"] = screen_refresh_interval(current.modified)
+
+    for i, item in enumerate(lines[:height]):
+        if isinstance(item, tuple):
+            add_line(i, item[0][:width], item[1])
+        elif isinstance(item, str):
+            add_line(i, item[:width], Colours.default)
+        else:
+            # Clear the line
+            add_line(i, "", Colours.default)
+            # For each part of text, render it
+            x = 0
+            for part in item:
+                if isinstance(part, str):
+                    add_text(i, x, part)
+                    x += len(part)
+                else:
+                    add_text(i, x, part[0][:width], part[1])
+                    x += len(part[0])
 
 
 
-def key_hook(explorer, key):
+def key_hook(explorer, key, mode):
     ...

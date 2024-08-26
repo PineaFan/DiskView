@@ -1,7 +1,7 @@
 import pathlib
 from colours import Colours
 
-def callback(explorer, width, add_text, **kwargs):
+def callback(explorer, width, add_text, add_line, **kwargs):
     # Get the current path
     path = str(explorer.current_path)
     # Get the user's home directory
@@ -40,15 +40,18 @@ def callback(explorer, width, add_text, **kwargs):
         add_text(0, 0, "/", Colours.default)
 
     # Second line
+    if explorer.memo.get("error", False):
+        add_line(1, explorer.memo["error"], Colours.error)
+        return
     # If all items are on screen
     current = explorer.known_files[explorer.current_path]
     if explorer.memo.get("all_on_screen", False):
         add_text(1, 0, f"Showing all {current.get("total")} items", Colours.default)
     elif current.get("total", 0) > 0:
         files_from, files_to = explorer.memo["visible"]
-        add_text(1, 0, f"Showing {files_from + 1} to {files_to} of {current.get('total')} items", Colours.default)
+        add_text(1, 0, f"Showing {max(files_from, 1)} to {files_to} of {current.get('total')} items", Colours.default)
     else:
         add_text(1, 0, "No items", Colours.default)
 
-def key_hook(explorer, key):
+def key_hook(explorer, key, mode):
     ...
