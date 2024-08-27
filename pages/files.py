@@ -3,7 +3,6 @@ from utils.icons import Icons
 from utils.colours import Colours
 from utils.structures import Item
 from utils.enums import Modes
-from utils.keymap import Keys
 
 
 def calculate_visible_range(height, selection, total):
@@ -101,28 +100,28 @@ def callback(explorer, height, width, add_line, add_text, **kwargs):
 
 def key_hook(explorer, key, mode):
     selection_before = explorer.selection
-    if key == Keys.arrow_up:
+    if key == explorer.settings.keys.arrow_up:
         explorer.selection -= 1
-    elif key == Keys.arrow_down:
+    elif key == explorer.settings.keys.arrow_down:
         explorer.selection += 1
-    elif key == Keys.navigate_into:
+    elif key == explorer.settings.keys.navigate_into:
         selected = explorer.current_item.location
         if selected == "..":
             explorer.navigate(explorer.current_path.parent)
         else:
             explorer.navigate(explorer.current_path / selected)
     if mode == Modes.default:
-        if key == Keys.scroll_up_page:
+        if key == explorer.settings.keys.scroll_up_page:
             # Change selection by the height of the "main" panel
             explorer.selection -= explorer.sections.main[0]
-        elif key == Keys.navigate_parent:
+        elif key == explorer.settings.keys.navigate_parent:
             if explorer.current_path != pathlib.Path("/"):
                 explorer.navigate(explorer.current_path.parent)
-        elif key == Keys.scroll_down_page:
+        elif key == explorer.settings.keys.scroll_down_page:
             explorer.selection += explorer.sections.main[0]
-        elif key == Keys.scroll_top:
+        elif key == explorer.settings.keys.scroll_top:
             explorer.selection = 0
-        elif key == Keys.scroll_bottom:
+        elif key == explorer.settings.keys.scroll_bottom:
             total = explorer.known_items
             total = len(total["files"]) + len(total["folders"]) + (1 if explorer.current_path != pathlib.Path("/") else 0)
             explorer.selection = total - 1

@@ -38,6 +38,9 @@ def callback(explorer, height, width, add_text, add_line, **kwargs):
     if explorer.memo.get("error", False):
         add_line(1, explorer.memo["error"], Colours.error)
         return
+    if explorer.memo.get("info", False):
+        add_line(1, explorer.memo["info"], Colours.accent)
+        return
     # If all items are on screen
     current = explorer.known_files[explorer.current_path]
     info = f" ({len(current.get('folders', 0))} folders, {len(current.get('files', 0))} files)"

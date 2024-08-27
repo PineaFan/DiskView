@@ -44,12 +44,15 @@ def preview_directory(current, height, width, settings):
     except PermissionError:
         return [(" No read permissions", Colours.error)]
     for item in scan:
-        if item.name.startswith(".") and not settings.get("show_hidden", False):
-            continue
-        if item.is_dir():
-            folders.append(item)
-        else:
-            files.append(item)
+        try:
+            if item.name.startswith(".") and not settings.get("show_hidden_files", False):
+                continue
+            if item.is_dir():
+                folders.append(item)
+            else:
+                files.append(item)
+        except PermissionError:
+            pass
     file_count, folder_count = len(files), len(folders)
     files, folders = sorted(files, key=lambda x: x.name), sorted(folders, key=lambda x: x.name)
     lines = []
@@ -74,31 +77,34 @@ def preview_directory(current, height, width, settings):
 
 
 def callback(explorer, height, width, add_line, add_text, **kwargs):
-    current = explorer.current_item
-    lines = []
-    if current.is_dir:
-        lines = preview_directory(current, height, width, explorer.settings)
-    elif not current.can_read:
-        lines = [(" No read permissions", Colours.error)]
-    elif explorer.memo.get("preview"):
-        lines = explorer.memo["preview"]
-    else:
-        location = current.link_from or current.location
-        try:
-            with open(location, "r") as file:
-                lines = get_preview_lines(file, height, width)
-        except PermissionError:
+    try:
+        current = explorer.current_item
+        lines = []
+        if current.is_dir:
+            lines = preview_directory(current, height, width, explorer.settings)
+        elif not current.can_read:
             lines = [(" No read permissions", Colours.error)]
-        except (FileNotFoundError, OSError):
-            # Broken link
-            lines = [(" File not found", Colours.error)]
-    # Fill any blank lines
-    for _ in range(height - len(lines)):
-        lines.append("")
+        elif explorer.memo.get("preview"):
+            lines = explorer.memo["preview"]
+        else:
+            location = current.link_from or current.location
+            try:
+                with open(location, "r") as file:
+                    lines = get_preview_lines(file, height, width)
+            except PermissionError:
+                lines = [(" No read permissions", Colours.error)]
+            except (FileNotFoundError, OSError):
+                # Broken link
+                lines = [(" File not found", Colours.error)]
+        # Fill any blank lines
+        for _ in range(height - len(lines)):
+            lines.append("")
 
-    explorer.memo["preview"] = lines
+        explorer.memo["preview"] = lines
 
-    explorer.render_parts(lines, height, width, add_line, add_text)
+        explorer.render_parts(lines, height, width, add_line, add_text)
+    except (PermissionError, FileNotFoundError, OSError):
+        explorer.render_parts([(" Loading preview failed", Colours.error)], height, width, add_line, add_text)
 
 
 

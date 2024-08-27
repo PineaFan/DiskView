@@ -41,7 +41,8 @@ icons = {
         "chevron": { "right": " ", "down": " ", "up": " ", "left": " "},
         "git": "󰊢 ",
         "total": "󰒠 ",
-        "text_cursor": "󰗧 "
+        "text_cursor": "󰗧 ",
+        "cross": " "
     },
     "languages": {
         "python": " ",

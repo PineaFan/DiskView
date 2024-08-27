@@ -18,7 +18,7 @@ from pages import footer
 from utils.enums import Modes
 from utils.colours import Colours
 from utils.structures import Item
-from utils.keymap import Keys
+from utils.settings import Settings
 
 
 class GridHelper:
@@ -128,14 +128,7 @@ class Explorer:
         self.known_files = {}
         self.mode = Modes.default
 
-        self.settings = {
-            "show_hidden_files": True,
-            "show_permission_denied": True,
-            "show_preview": True,
-            "use_numeric_jump": False,
-            "cache_visited": False,
-            "only_active_borders": False
-        }
+        self.settings = Settings()
 
         self.screen = screen
         curses.curs_set(0)
@@ -282,21 +275,38 @@ class Explorer:
 
         self.render_borders()
 
+    def clear_cache(self):
+        self.known_files = {}
+        self.memo = {
+            "can_read": {}
+        }
+
     def key_hook(self, _, key, mode):  # _ is self, but it's passed in for consistency
         if mode == Modes.default:
-            if key == "q" or key == Keys.escape:
+            if key == self.settings.keys.escape:
                 raise KeyboardInterrupt
+            elif key == self.settings.keys.toggle_hidden_files:
+                new_shf = not self.settings.get("show_hidden_files")
+                self.settings.set("show_hidden_files", new_shf)
+                self.settings.save()
+                self.selection = 0
+                self.clear_cache()
+                self.memo["info"] = f"Hidden files {'shown' if new_shf else 'hidden'}"
+            elif key == self.settings.keys.refresh:
+                self.clear_cache()
+                self.memo["info"] = "Refreshed!"
 
     def handle_key(self, key):
         self.memo["error"] = None
+        self.memo["info"] = None
         key = curses.keyname(key).decode("utf-8")
+        self.key_hook(self, key, self.mode)
         for hook in self.modules[0].values():
             hook.key_hook(self, key, self.mode)
 
     def teardown(self):
         self.screen.clear()
         self.screen.refresh()
-        curses.endwin()
 
     def generate_sections(self):
         if self.mode == Modes.default:

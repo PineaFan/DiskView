@@ -1,12 +1,13 @@
 import curses
 import time
 import platform
-import json
+from utils.settings import Settings
 
 
 class Explorer:
     def __init__(self, screen):
         self.screen = screen
+        self.settings = Settings()
         curses.curs_set(0)
 
     @property
@@ -68,20 +69,25 @@ def mapper(screen):
         explorer.wait_for_input()
         explorer.wait_until_no_input()
 
-        with open("keys.json") as f:
-            raw = json.load(f)
-        keys = raw[device_name]
+        keys = explorer.settings.get("keymap")
 
         for key_to_modify in keys:
-            explorer.render(f"Press the following key: {key_to_modify}")
+            explorer.render(
+                f"Press the following key: {key_to_modify}",
+                f"{explorer.settings.key_description(key_to_modify)} (Default: {explorer.settings.key_name(key_to_modify)})",
+                "[Press 's' to skip]",
+            )
             key = explorer.wait_for_input()
-            explorer.render(f"Key {key_to_modify} has been set to {key}", "Loading next key...")
-            keys[key_to_modify] = key
+            if key != "s":
+                explorer.render(f"Key {key_to_modify} has been set to {key}", "Loading next key...")
+                keys[key_to_modify] = key
+            else:
+                explorer.render(f"Skipped", "Loading next key...")
+                keys[key_to_modify] = None
             explorer.wait_until_no_input()
+
+        explorer.settings.set("keymap", keys)
         explorer.teardown()
-        raw[device_name] = keys
-        with open("keys.json", "w") as f:
-            json.dump(raw, f, indent=4)
         print("Keymap generated successfully!")
     except KeyboardInterrupt:
         explorer.teardown()

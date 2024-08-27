@@ -34,6 +34,8 @@ class Item:
                 self._owner = "Unknown"
                 self._group = "Unknown"
                 return
+            except PermissionError:
+                self.link_from = None
             self.is_dir = os.path.isdir(self.link_from or self.location)
 
         self._size = None
@@ -49,7 +51,10 @@ class Item:
         if self._size is None:
             self._size = 0
             if not self.is_dir:
-                self._size = os.path.getsize(self.link_from or self.location)
+                try:
+                    self._size = os.path.getsize(self.link_from or self.location)
+                except (FileNotFoundError, PermissionError):
+                    self._size = 0
         return self._size
 
     @property
@@ -63,7 +68,10 @@ class Item:
     @property
     def modified(self):
         if self._modified is None:
-            self._modified = os.path.getmtime(self.link_from or self.location)
+            try:
+                self._modified = os.path.getmtime(self.link_from or self.location)
+            except (FileNotFoundError, PermissionError):
+                self._modified = 0
         return self._modified
 
     @property
@@ -76,7 +84,11 @@ class Item:
     @property
     def stat(self):
         if self._stat is None:
-            self._stat = os.stat(self.link_from or self.location)
+            try:
+                self._stat = os.stat(self.link_from or self.location)
+            except (FileNotFoundError, PermissionError):
+                self._stat = os.stat("/")
+                self._icon = Icons.generic.cross
         return self._stat
 
     @property
@@ -88,8 +100,7 @@ class Item:
     @property
     def group(self):
         if self._group is None:
-            stat = os.stat(self.link_from or self.location)
-            group_id = stat.st_gid
+            group_id = self.stat.st_gid
             self._group = getgrgid(group_id).gr_name
         return self._group
 
