@@ -42,7 +42,8 @@ icons = {
         "git": "󰊢 ",
         "total": "󰒠 ",
         "text_cursor": "󰗧 ",
-        "cross": " "
+        "cross": " ",
+        "check": " ",
     },
     "languages": {
         "python": " ",

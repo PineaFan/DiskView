@@ -6,6 +6,40 @@ from grp import getgrgid
 
 from utils.icons import identify_icon, Icons
 from utils.colours import row_highlight_colour
+from utils.enums import Modes
+
+
+class Popup:
+    def __init__(self,
+        options: list,  # {text: str, callback: Callable},
+        title: str = None,
+        description: str = None,
+        mode_on_close: Modes = Modes.default,
+        selection: int = 0
+    ) -> None:
+        self.options = options
+        self.title = title
+        self.description = description
+        self.mode_on_close = mode_on_close
+        self.retain_selection = selection
+        self.height, self.width, self.top, self.left = 0, 0, 0, 0
+
+    def set_dimensions(self, available_height, available_width):
+        # Width should be 1/2 of the screen, at least 10 and at most 80
+        self.width = min(max(available_width // 2, 10), 80)
+        # Height should be 1/2 of the screen, at least 5 and at most 7
+        self.height = min(max(available_height // 2, 5), 7)
+        # Top should be 1/4 of the screen
+        self.top = (available_height - self.height) // 2
+        # Left should be 1/4 of the screen
+        self.left = (available_width - self.width) // 2
+
+    @property
+    def json(self):
+        return [self.height, self.width, self.top, self.left]
+
+    def __getattribute__(self, name: str):
+        return super().__getattribute__(name)
 
 
 class Item:

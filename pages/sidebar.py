@@ -63,7 +63,10 @@ def callback(explorer, height, width, add_line, add_text, **kwargs):
     lines = []  # List of lists of (text, colour) or (text, colour)
     lines.append((f" {current.icon} {file_name[:name_width]}", Colours.accent))
     if current.is_link and current.link_from:
-        lines.append((f" -> {current.link_from}", Colours.warning))
+        if current.link_from.startswith(f"/home/{explorer.username}"):
+            lines.append((f" -> ~/{current.link_from.split('/')[-1]}", Colours.warning))
+        else:
+            lines.append((f" -> {current.link_from}", Colours.warning))
 
     u_rwx = int_to_rwx(current.permissions[0])
     g_rwx = int_to_rwx(current.permissions[1])

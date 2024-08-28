@@ -24,10 +24,6 @@ def callback(explorer, height, width, add_text, add_line, **kwargs):
     if path == pathlib.Path("/"):
         parts = [("/", Colours.accent)]
     add_ellipsis = False
-    # if 1 + len("/".join(parts)) > width:
-    #     add_ellipsis = True
-    #     while len(parts) > width - 3:
-    #         parts.pop(1)
     if add_ellipsis:
         parts = ["..."] + parts
     parts = list(itertools.chain(*[[x, "/"] for x in parts]))[:-1]

@@ -1,8 +1,9 @@
 import pathlib
 from utils.icons import Icons
 from utils.colours import Colours
-from utils.structures import Item
+from utils.structures import Item, Popup
 from utils.enums import Modes
+from utils.file_operations import delete_file
 
 
 def calculate_visible_range(height, selection, total):
@@ -37,6 +38,14 @@ def callback(explorer, height, width, add_line, add_text, **kwargs):
     explorer.selection = explorer.selection or 0
     explorer.selection = max(min(explorer.selection, len(items) - 1), 0)
     selected_item = items[explorer.selection]
+
+    if explorer.move_selection_to:
+        # Find the item where item.name == explorer.move_selection_to
+        for i, item in enumerate(items):
+            if item.name == explorer.move_selection_to:
+                explorer.selection = i
+                break
+        explorer.move_selection_to = None
 
     visible = calculate_visible_range(height, explorer.selection, len(items))
     explorer.memo["visible"] = list(visible)
@@ -104,7 +113,7 @@ def key_hook(explorer, key, mode):
         explorer.selection -= 1
     elif key == explorer.settings.keys.arrow_down:
         explorer.selection += 1
-    elif key == explorer.settings.keys.navigate_into:
+    elif key == explorer.settings.keys.navigate_into and mode != Modes.rename:
         selected = explorer.current_item.location
         if selected == "..":
             explorer.navigate(explorer.current_path.parent)
@@ -132,3 +141,24 @@ def key_hook(explorer, key, mode):
 
         if explorer.selection != selection_before:
             explorer.memo["preview"] = None
+
+        if key == explorer.settings.keys.delete_file:
+            explorer.move_selection_to = explorer.current_item.name
+            def no_action():
+                explorer.memo["info"] = "No changes were made."
+            def delete():
+                explorer.selection = 0
+                delete_file(explorer.current_item)
+                explorer.clear_cache()
+            explorer.popup = Popup(
+                [
+                    {"text": "Cancel", "callback": no_action},
+                    {"text": "Delete", "callback": delete}
+                ],
+                "Delete Permanently",
+                f"You're about to delete [{explorer.current_item.display[2:]}] permanently. Are you sure?",
+                Modes.default, explorer.selection
+            )
+            explorer.selection = 0
+            explorer.mode = Modes.popup
+            explorer.generate_sections()

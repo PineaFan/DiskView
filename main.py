@@ -13,11 +13,12 @@ from pages import sidebar
 from pages import files
 from pages import header
 from pages import preview
-from pages import footer
+from pages import type_bar
+from pages import popup
 
 from utils.enums import Modes
 from utils.colours import Colours
-from utils.structures import Item
+from utils.structures import Item, Popup
 from utils.settings import Settings
 
 
@@ -31,6 +32,7 @@ class GridHelper:
         else:
             self.remaining = [height, width, 0, 0]
         self.padding = padding
+        self.popup = None
 
     @property
     def json(self):
@@ -102,11 +104,14 @@ class GridHelper:
             # Remove the width from the remaining space
             update(1, width)
 
+    def add_popup(self, popup):
+        self.popup = popup
+
     def add_remaining(self, name):
         self.sections[name] = self.remaining
 
     def __getattribute__(self, name: str) -> any:
-        if name in ["add_section", "add_remaining", "json", "sections", "width", "height", "padding", "remaining"] or name.startswith("__"):
+        if name in ["add_section", "add_remaining", "json", "sections", "width", "height", "padding", "remaining", "popup", "add_popup"] or name.startswith("__"):
             return super().__getattribute__(name)
         return self.sections[name]
 
@@ -116,6 +121,7 @@ class Explorer:
         self.current_path = start_path or pathlib.Path.home()
         self.current_item = None
         self.selection = 0
+        self.move_selection_to = None
         self.to_highlight = None
         self.folder_details = None
         self.scroll_direction_down = True
@@ -142,11 +148,12 @@ class Explorer:
 
         self.mode_focus = {
             Modes.default: "main",
-            Modes.search: "footer"
+            Modes.search: "type_bar"
         }
 
         self.entry = ""
         self.entry_index = 0
+        self.popup = None
 
     @property
     def modules(self):
@@ -154,7 +161,7 @@ class Explorer:
             "main": files,
             "header": header,
             "sidebar": sidebar,
-            "footer": footer,
+            "type_bar": type_bar,
             "preview": preview
         }
         rendered_modules = {k: v for k, v in all_modules.items() if k in self.sections.json}
@@ -196,7 +203,7 @@ class Explorer:
         if self.current_path in self.known_files:
             path = self.known_files[self.current_path]
             folders, files = path["folders"], path["files"]
-            if self.entry:
+            if self.entry and self.mode == Modes.search:
                 folders = self.searcher(folders, "folders")
                 files = self.searcher(files, "files")
             return folders + files
@@ -270,8 +277,16 @@ class Explorer:
             ...  # TODO
 
     def render(self):
+        actual_selection = self.selection
+        if self.popup:
+            self.selection = self.popup.retain_selection
         for name, imported in self.modules[1].items():
             imported.callback(**self.get_externals(getattr(self.sections, name)))
+        self.selection = actual_selection
+
+        if self.popup:
+            self.sections.popup.set_dimensions(*self.dimensions)
+            popup.callback(**self.get_externals(self.sections.popup.json))
 
         self.render_borders()
 
@@ -283,13 +298,13 @@ class Explorer:
 
     def key_hook(self, _, key, mode):  # _ is self, but it's passed in for consistency
         if mode == Modes.default:
-            if key == self.settings.keys.escape:
-                raise KeyboardInterrupt
-            elif key == self.settings.keys.toggle_hidden_files:
+            # if key == self.settings.keys.escape:
+            #     raise KeyboardInterrupt
+            if key == self.settings.keys.toggle_hidden_files:
                 new_shf = not self.settings.get("show_hidden_files")
                 self.settings.set("show_hidden_files", new_shf)
                 self.settings.save()
-                self.selection = 0
+                self.move_selection_to = self.current_item.name
                 self.clear_cache()
                 self.memo["info"] = f"Hidden files {'shown' if new_shf else 'hidden'}"
             elif key == self.settings.keys.refresh:
@@ -301,6 +316,14 @@ class Explorer:
         self.memo["info"] = None
         key = curses.keyname(key).decode("utf-8")
         self.key_hook(self, key, self.mode)
+        if self.popup:
+            callback = popup.key_hook(self, key, self.mode)
+            if not callback:
+                return
+            callback()
+            self.mode = self.popup.mode_on_close
+            self.popup = None
+            return
         for hook in self.modules[0].values():
             hook.key_hook(self, key, self.mode)
 
@@ -309,22 +332,19 @@ class Explorer:
         self.screen.refresh()
 
     def generate_sections(self):
-        if self.mode == Modes.default:
-            self.sections = GridHelper(*self.dimensions, padding=True)
-            self.sections.add_section("header", height=2)
-            # self.sections.add_section("footer", height=1, flip_align=True)
-            self.sections.add_section("sidebar", width=2/5, flip_align=True)
-            if self.settings.get("show_preview", True):
-                self.sections.add_section("preview", within="sidebar", height=-6, flip_align=True)
-            self.sections.add_remaining("main")
-        elif self.mode == Modes.search:
-            self.sections = GridHelper(*self.dimensions, padding=True)
-            self.sections.add_section("header", height=2)
-            self.sections.add_section("footer", height=1, flip_align=True)
-            self.sections.add_section("sidebar", width=2/5, flip_align=True)
-            if self.settings.get("show_preview", True):
-                self.sections.add_section("preview", within="sidebar", height=-6, flip_align=True)
-            self.sections.add_remaining("main")
+        self.sections = GridHelper(*self.dimensions, padding=True)
+        self.sections.add_section("header", height=2)
+
+        if self.mode == Modes.search or self.mode == Modes.rename:
+            self.sections.add_section("type_bar", height=1, flip_align=True)
+
+        self.sections.add_section("sidebar", width=2/5, flip_align=True)
+        if self.settings.get("show_preview", True):
+            self.sections.add_section("preview", within="sidebar", height=-5, flip_align=True)
+        self.sections.add_remaining("main")
+
+        if self.mode == Modes.popup and self.popup:
+            self.sections.add_popup(self.popup)
 
     def resize_hook(self, force=False):
         new_dimensions = self.dimensions
@@ -354,10 +374,11 @@ class Explorer:
 
     def render_borders(self):
         highlight = self.colours.blue
+        popup = self.popup
         chars = {}  # (y, x): 00000 to indicate which four edges are present (top, right, bottom, left)
         # The first bit indicates if it is connected to the focused section
         for section, (height, width, top, left) in self.sections.json.items():
-            colour_bit = 16 if section == self.mode_focus.get(self.mode) else 0
+            colour_bit = 16 if section == self.mode_focus.get(self.mode) and not popup else 0
             if colour_bit != 16 and self.settings.get("only_active_borders", False):
                 continue
             for i in range(width):
@@ -369,7 +390,7 @@ class Explorer:
         # Draw the corners around each section
         # Firstly, set every location to 00000
         for section, (height, width, top, left) in self.sections.json.items():
-            colour_bit = 16 if section == self.mode_focus.get(self.mode) else 0
+            colour_bit = 16 if section == self.mode_focus.get(self.mode) and not popup else 0
             if colour_bit != 16 and self.settings.get("only_active_borders", False):
                 continue
             # Top left (Draw bottom and right connections)
@@ -387,6 +408,38 @@ class Explorer:
             # Bottom right
             current = chars.get((top + height, left + width), 0)
             # Bitwise OR with 1001
+            chars[(top + height, left + width)] = current | 9 | colour_bit
+
+        # Render the popup
+        if popup:
+            colour_bit = 16
+            highlight = self.colours.red
+            (height, width, top, left) = popup.json
+            # Draw the borders
+            for i in range(width):
+                # Top
+                chars[(top - 1, left + i)] = chars.get((top - 1, left + i), 0) & 0b11101 | 5 | colour_bit
+                # Bottom
+                chars[(top + height, left + i)] = chars.get((top + height, left + i), 0) & 0b10111 | 5 | colour_bit
+            for i in range(height):
+                # Left
+                chars[(top + i, left - 1)] = chars.get((top + i, left - 1), 0) & 0b11011 | 10 | colour_bit
+                # Right
+                chars[(top + i, left + width)] = chars.get((top + i, left + width), 0) & 0b11110 | 10 | colour_bit
+            for h in range(height):
+                for w in range(width):
+                    chars[(top + h, left + w)] = 0
+            # Top left
+            current = chars.get((top - 1, left - 1), 0)
+            chars[(top - 1, left - 1)] = current | 6 | colour_bit
+            # Top right
+            current = chars.get((top - 1, left + width), 0)
+            chars[(top - 1, left + width)] = current | 3 | colour_bit
+            # Bottom left
+            current = chars.get((top + height, left - 1), 0)
+            chars[(top + height, left - 1)] = current | 12 | colour_bit
+            # Bottom right
+            current = chars.get((top + height, left + width), 0)
             chars[(top + height, left + width)] = current | 9 | colour_bit
 
         # Now, draw the corners (top, right, bottom, left)

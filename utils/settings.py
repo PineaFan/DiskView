@@ -20,7 +20,11 @@ default_keys = {
         "escape": "^[",
         "delete": "KEY_DC",
         "toggle_hidden_files": "^H",
-        "refresh": "^R"
+        "refresh": "^R",
+        "rename": "r",
+        "search": "/",
+        "enter": "^J",
+        "delete_file": "d",
     },
     "mac": {
         "navigate_parent": "^?",
@@ -37,7 +41,11 @@ default_keys = {
         "escape": "^[",
         "delete": "KEY_DC",
         "toggle_hidden_files": "^H",
-        "refresh": "^R"
+        "refresh": "^R",
+        "rename": "r",
+        "search": "/",
+        "enter": "^J",
+        "delete_file": "d",
     },
     "about": {
         "navigate_parent": "Navigate to the parent directory",
@@ -54,7 +62,11 @@ default_keys = {
         "escape": "Close the current mode, or exit the program",
         "delete": "Deletes the character after the cursor in the typing bar",
         "toggle_hidden_files": "Toggle showing hidden files",
-        "refresh": "Reload all files and directories in the current directory"
+        "refresh": "Reload all files and directories in the current directory",
+        "rename": "Rename the selected file or directory",
+        "search": "Search for a file or directory",
+        "enter": "Enter - Used to confirm a selection or action",
+        "delete_file": "Delete the selected file or directory",
     }
 }
 
@@ -93,6 +105,8 @@ keynames = {
         "arrow_left": "←",
         "arrow_right": "→",
         "toggle_hidden_files": "^H",
+        "refresh": "^R",
+        "enter": "Enter 󰌑 ",
     },
     "linux": {},
     "mac": {
