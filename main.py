@@ -18,7 +18,7 @@ from pages import popup
 
 from utils.enums import Modes
 from utils.colours import Colours
-from utils.structures import Item, Popup
+from utils.structures import Item
 from utils.settings import Settings
 
 
@@ -154,6 +154,21 @@ class Explorer:
         self.entry = ""
         self.entry_index = 0
         self.popup = None
+        self.undo_stack = []
+
+    def undo(self):
+        if self.undo_stack:
+            self.undo_stack.pop()()
+            self.memo["info"] = "Undone last action"
+            self.known_files = {}
+            self.render()
+        else:
+            self.memo["error"] = "No actions to undo"
+            self.render()
+
+    def add_undo(self, callback):
+        self.undo_stack.append(callback)
+        self.undo_stack = self.undo_stack[-self.settings.get("undo_stack_size"):]
 
     @property
     def modules(self):
@@ -310,6 +325,8 @@ class Explorer:
             elif key == self.settings.keys.refresh:
                 self.clear_cache()
                 self.memo["info"] = "Refreshed!"
+            elif key == self.settings.keys.undo:
+                self.undo()
 
     def handle_key(self, key):
         self.memo["error"] = None

@@ -25,6 +25,7 @@ default_keys = {
         "search": "/",
         "enter": "^J",
         "delete_file": "d",
+        "undo": "Z",
     },
     "mac": {
         "navigate_parent": "^?",
@@ -46,6 +47,7 @@ default_keys = {
         "search": "/",
         "enter": "^J",
         "delete_file": "d",
+        "undo": "Z",
     },
     "about": {
         "navigate_parent": "Navigate to the parent directory",
@@ -67,6 +69,7 @@ default_keys = {
         "search": "Search for a file or directory",
         "enter": "Enter - Used to confirm a selection or action",
         "delete_file": "Delete the selected file or directory",
+        "undo": "Undo the last action",
     }
 }
 
@@ -104,8 +107,6 @@ keynames = {
         "arrow_down": "↓",
         "arrow_left": "←",
         "arrow_right": "→",
-        "toggle_hidden_files": "^H",
-        "refresh": "^R",
         "enter": "Enter 󰌑 ",
     },
     "linux": {},
@@ -124,6 +125,7 @@ settings_details = {
     "use_numeric_jump": ["Use numeric jump", "Adds numbers above/below the current selection to jump to that item"],
     "cache_visited": ["Cache visited", "Cache the contents of visited directories to speed up navigation. Usually not needed"],
     "only_active_borders": ["Only active borders", "Only show a border around the active panel, instead of all panels"],
+    "undo_stack_size": ["Undo stack size", "The number of actions that can be undone"],
     "keymap": ["Keymap", "The keymap to use for navigation"]
 }
 
@@ -152,6 +154,7 @@ class Settings:
             "use_numeric_jump": False,
             "cache_visited": False,
             "only_active_borders": False,
+            "undo_stack_size": 10,
             "keymap": default_keys[self.platform],
         }
 

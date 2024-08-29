@@ -20,17 +20,20 @@ def callback(explorer, height, width, add_line, add_text, **kwargs):
     # If there are no lines, add an empty line
     if not lines:
         lines.append("")
-    for _ in range(2): lines.append("")
-    description_words = explorer.popup.description.split(" ")
-    current_width = 0
-    for word in description_words:
-        if current_width + len(word) > width:
-            lines.append("")
-            current_width = 0
-        lines[-1] += word + " "
-        current_width += len(word) + 1
-    if not lines:
+    lines.append("")
+    description_lines = explorer.popup.description.split("\n")
+    for line in description_lines:
         lines.append("")
+        description_words = line.split(" ")
+        current_width = 0
+        for word in description_words:
+            if current_width + len(word) > width:
+                lines.append("")
+                current_width = 0
+            lines[-1] += word + " "
+            current_width += len(word) + 1
+        if not lines:
+            lines.append("")
     lines.append("")
 
     options = explorer.popup.options  # List of {text: str, callback: Callable}

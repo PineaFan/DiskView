@@ -3,7 +3,7 @@ from utils.icons import Icons
 from utils.colours import Colours
 from utils.structures import Item, Popup
 from utils.enums import Modes
-from utils.file_operations import delete_file
+from utils.file_operations import delete_file, create_file_with_content
 
 
 def calculate_visible_range(height, selection, total):
@@ -144,19 +144,34 @@ def key_hook(explorer, key, mode):
 
         if key == explorer.settings.keys.delete_file:
             explorer.move_selection_to = explorer.current_item.name
+            current_location, current_display = explorer.current_item.location, explorer.current_item.display
+            current_content = None
+            if not explorer.current_item.is_dir:
+                with open(explorer.current_item.location, "r") as f:
+                    current_content = f.read()
             def no_action():
                 explorer.memo["info"] = "No changes were made."
+            def replace():
+                if create_file_with_content(current_location, current_content):
+                    explorer.memo["info"] = f"Restored [{current_display[2:]}]"
+                else:
+                    explorer.memo["error"] = f"Failed to restore [{explorer.current_display[2:]}]"
             def delete():
+                explorer.add_undo(replace)
                 explorer.selection = 0
                 delete_file(explorer.current_item)
                 explorer.clear_cache()
+            permanent = ""
+            if current_content is None:
+                permanent = " permanently (Cannot be undone)"
             explorer.popup = Popup(
                 [
                     {"text": "Cancel", "callback": no_action},
                     {"text": "Delete", "callback": delete}
                 ],
                 "Delete Permanently",
-                f"You're about to delete [{explorer.current_item.display[2:]}] permanently. Are you sure?",
+                f"You're about to delete [{explorer.current_item.display[2:]}]{permanent}. Are you sure?\n" +
+                "In this version, directories cannot be restored with undo, but files can.",
                 Modes.default, explorer.selection
             )
             explorer.selection = 0

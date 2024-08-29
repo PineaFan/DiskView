@@ -1,6 +1,7 @@
 from utils.colours import Colours
 from utils.icons import Icons
 from utils.enums import Modes
+from utils.structures import Item
 from utils.file_operations import rename_file
 
 
@@ -38,12 +39,25 @@ def rename_callback(explorer, height, width, add_line, add_text, **kwargs):
 
     actual_name = explorer.entry + " "
     name_characters = [c for c in actual_name]
-    name_characters[explorer.entry_index] = (name_characters[explorer.entry_index], Colours.highlight)
+
+    colour = Colours.default
+    dir_files = explorer.known_files.get(explorer.current_path)
+    item_names = [item.name for item in dir_files["files"]] + [item.name for item in dir_files["folders"]]
+    warning = ""
+    if actual_name[0] == ".":
+        colour = Colours.warning
+        warning = (f" [File will be hidden once created]", Colours.warning)
+    if actual_name[:-1] in item_names and actual_name[:-1] != explorer.current_item.name:
+        colour = Colours.error
+        warning = (f" [File with this name already exists]", Colours.error)
+    name_characters = [(c, colour) for c in name_characters]
+    name_characters[explorer.entry_index] = (name_characters[explorer.entry_index][0], Colours.highlight)
 
     lines.append([
         (f"Rename: ", Colours.accent),
         *name_characters,
-        (f"[Press {explorer.settings.key_name('esc')} to cancel]", Colours.default)
+        (f"[Press {explorer.settings.key_name('esc')} to cancel]", Colours.default),
+        warning
     ])
 
     explorer.render_parts(lines, height, width, add_line, add_text)
@@ -70,9 +84,15 @@ def key_hook(explorer, key, mode):
         explorer.regenerate_sections()
 
     if key == explorer.settings.keys.enter and mode == Modes.rename:
+        name_before = explorer.current_item.name
         explorer.mode = Modes.default
         if not rename_file(explorer.current_item, explorer.entry):
             explorer.memo["error"] = f"Failed to rename {explorer.current_item.name}"
+        else:
+            new_item = Item(explorer.current_path, explorer.entry)
+            def undo_rename():
+                rename_file(new_item, name_before)
+            explorer.add_undo(undo_rename)
         explorer.move_selection_to = explorer.entry
         explorer.entry = ""
         explorer.clear_cache()

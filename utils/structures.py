@@ -27,8 +27,8 @@ class Popup:
     def set_dimensions(self, available_height, available_width):
         # Width should be 1/2 of the screen, at least 10 and at most 80
         self.width = min(max(available_width // 2, 10), 80)
-        # Height should be 1/2 of the screen, at least 5 and at most 7
-        self.height = min(max(available_height // 2, 5), 7)
+        # Height should be 1/2 of the screen, at least 5 and at most 8
+        self.height = min(max(available_height // 2, 5), 8)
         # Top should be 1/4 of the screen
         self.top = (available_height - self.height) // 2
         # Left should be 1/4 of the screen
